@@ -44,6 +44,15 @@ User module is only used in client.
 It uses angularfire2 that is not even installed on cloud function. so do not care about it on cloud funtions.
 
 
+## Post module
+
+* Only for create/edit/delete of post & comment will be done here.
+
+* CRUD of category will be done by firebase SDK in angular.
+
+* Other works like 'like', 'dislike', 'report as spam', etc will be done in Angular with firebase SDK.
+
+
 
 # Trouble Shooting
 

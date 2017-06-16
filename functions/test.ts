@@ -260,10 +260,22 @@ class AppTest {
 
     /// post get with wrong key
 
-    await this.forum.getPostData('-12345abc---')
+    await this.forum.getPostData('-12345abc----')
       .then( p => this.error("Wrong post key to get a post must be failed. result: " + JSON.stringify(p)))
       .catch( e => this.expect( e.message, ERROR.post_not_found_by_that_key, "post not found with wrong key properly failed" ) );
+
     /// post get
+    let key = await this.forum.createPost( { categories: ['abc'], subject: 'hi' });
+    this.forum.getPostData( key )
+      .then( (post: POST) => {
+        this.expect( post.subject, 'hi', "Success getPostData()");
+      })
+      .catch( e => this.error("getPostData() failed with key: " + key ));
+
+
+
+
+
 
     /// post edit with wrong key
     /// post edit
