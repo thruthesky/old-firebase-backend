@@ -1,5 +1,4 @@
-*.js
-*.map
 
+*.map
 /dist/
 node_modules/
