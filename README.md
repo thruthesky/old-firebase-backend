@@ -5,9 +5,9 @@ firebase-backend
 
 # TODO
 
-* copy test from firebase-cms-functions
+* Backend gets 'uid' as user push key and trust it. but a user can send any data in 'uid' and it could lead a security problem. But it is impossible to use other's 'uid'. so it is trustable. 'uid' is more likely a password.
 
-* put 'firebase-backend.module' on root folder
+
 
 
 
@@ -25,6 +25,16 @@ firebase-backend
 
 
 # Coding Guideline for Developers
+
+## Debug Environment
+
+* Since we are not listing database onWrite, we do not need a fake database ref path like "/a/forum/category"
+
+
+## No anonymous user
+
+* Since we are planning only with social login, we don't do user authorization code.
+* If there is a case for anonymous user could write, then just let them write but not editable and deletable.
 
 
 ## User module

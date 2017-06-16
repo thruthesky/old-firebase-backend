@@ -4,7 +4,8 @@ import { ERROR } from '../error/error';
 
 
 import {
-    CATEGORY_PATH, CATEGORY, CATEGORIES, POST, POST_DATA_PATH, CATEGORY_POST_RELATION_PATH
+    CATEGORY_PATH, CATEGORY, CATEGORIES, POST,
+    POST_DATA_PATH, CATEGORY_POST_RELATION_PATH, ALL_CATEGORIES
 } from './forum.interface';
 
 
@@ -12,11 +13,11 @@ import {
 export class Forum {
     debugPath: string = ''; // debug path.
     lastErrorMessage: string = '';
-    constructor( public root: firebase.database.Reference ) {
-        
+    constructor(public root: firebase.database.Reference) {
+
     }
 
-    get getLastErrorMessage() : string {
+    get getLastErrorMessage(): string {
         let re = this.lastErrorMessage;
         this.lastErrorMessage = '';
         return re;
@@ -34,20 +35,20 @@ export class Forum {
      *              - category exists
      *              - other errors.
      */
-    createCategory( data: CATEGORY ) : firebase.Promise < any > {
-        if ( this.checkKey( data.id ) ) return firebase.Promise.reject( new Error ( ERROR.malformed_key ) );
-        return this.categoryExists( data.id ).then( re => {
-            throw new Error( ERROR.category_exists ); // 여기에 throw 하면 요 밑 .catch() 에서 받는다. 따라서 .catch() 에서 category_exist 를 받으면 에러를 리턴하고, 아니면 생성을 한다.
+    createCategory(data: CATEGORY): firebase.Promise<any> {
+        if (this.checkKey(data.id)) return firebase.Promise.reject(new Error(ERROR.malformed_key));
+        return this.categoryExists(data.id).then(re => {
+            throw new Error(ERROR.category_exists); // 여기에 throw 하면 요 밑 .catch() 에서 받는다. 따라서 .catch() 에서 category_exist 를 받으면 에러를 리턴하고, 아니면 생성을 한다.
         })
-        .catch( e => {
-            if ( e.message == ERROR.category_not_exist ) {
-                return this.setCategory( data );
-            }
-            if ( e.message == ERROR.category_exists ) {
-                this.setLastErrorMessage( `${data.id} category already exists` );
-            }
-            throw e;
-        });
+            .catch(e => {
+                if (e.message == ERROR.category_not_exist) {
+                    return this.setCategory(data);
+                }
+                if (e.message == ERROR.category_exists) {
+                    this.setLastErrorMessage(`${data.id} category already exists`);
+                }
+                throw e;
+            });
     }
 
     /**
@@ -55,16 +56,17 @@ export class Forum {
      * @param key The push key
      * @return true on error. false on success.
      */
-    checkKey( key: string ) : boolean {
-        if ( key === void 0 || ! key ) return true;
-        if ( key.indexOf('#') != -1 ) return true;
-        if ( key.indexOf('/') != -1 ) return true;
-        if ( key.indexOf('.') != -1 ) return true;
-        if ( key.indexOf('[') != -1 ) return true;
-        if ( key.indexOf(']') != -1 ) return true;
+    checkKey(key: string): boolean {
+        if (key === void 0 || !key) return true;
+        // if (key.length != 21) return true; // key can be made by user.
+        if (key.indexOf('#') != -1) return true;
+        if (key.indexOf('/') != -1) return true;
+        if (key.indexOf('.') != -1) return true;
+        if (key.indexOf('[') != -1) return true;
+        if (key.indexOf(']') != -1) return true;
         return false;
     }
-    
+
     /**
      * 
      * @param data 
@@ -76,11 +78,11 @@ export class Forum {
      * 
      * @todo permission error.
      */
-    editCategory( data: CATEGORY ) : firebase.Promise < any > {
-        if ( this.isEmpty( data.id ) ) return this.error( ERROR.category_id_empty );
-        if ( this.checkKey( data.id ) ) return firebase.Promise.reject( new Error ( ERROR.malformed_key ) );
-        return this.categoryExists( data.id ).then( re => {
-            return this.setCategory( data );
+    editCategory(data: CATEGORY): firebase.Promise<any> {
+        if (this.isEmpty(data.id)) return this.error(ERROR.category_id_empty);
+        if (this.checkKey(data.id)) return firebase.Promise.reject(new Error(ERROR.malformed_key));
+        return this.categoryExists(data.id).then(re => {
+            return this.setCategory(data);
         });
     }
 
@@ -95,15 +97,15 @@ export class Forum {
      *      on error, .catch() will be invoked.
      * 
      */
-    setCategory( data: CATEGORY ) : firebase.Promise < any > {
+    setCategory(data: CATEGORY): firebase.Promise<any> {
 
-        if ( this.isEmpty( data.id ) ) return this.error( ERROR.category_id_empty );
+        if (this.isEmpty(data.id)) return this.error(ERROR.category_id_empty);
 
-        data = this.undefinedToNull( data );
+        data = this.undefinedToNull(data);
 
 
         // console.log("edit Category data: ", data);
-        return this.category(data.id).set( data ).then( () => data.id );
+        return this.category(data.id).set(data).then(() => data.id);
     }
 
 
@@ -125,9 +127,9 @@ export class Forum {
      * @endcode
      * 
      */
-    deleteCategory( id: string )  : firebase.Promise < any >  {
-        if ( this.isEmpty( id ) ) return this.error( ERROR.category_id_empty );
-        return this.category( id ).set( null );
+    deleteCategory(id: string): firebase.Promise<any> {
+        if (this.isEmpty(id)) return this.error(ERROR.category_id_empty);
+        return this.category(id).set(null);
     }
 
 
@@ -145,15 +147,15 @@ export class Forum {
      * @endcode
      * 
      */
-    getCategories() : firebase.Promise<any> {
+    getCategories(): firebase.Promise<any> {
         let categories: CATEGORIES = [];
-        return this.category().once('value').then( snapshot => {
+        return this.category().once('value').then(snapshot => {
             //console.log(snapshot.val());
             let val = snapshot.val();
-            for( let k of Object.keys(val) ) {
+            for (let k of Object.keys(val)) {
                 let v = val[k];
                 //console.log(v);
-                categories.push( v );
+                categories.push(v);
             }
             return categories;
         });
@@ -166,18 +168,18 @@ export class Forum {
      *      category data promise. this may be null if the category does not exists.
      *      otherwise .catch() will be invoked.
      */
-    getCategory( category: string ) : firebase.Promise <any> {
-        if ( this.isEmpty( category ) ) return this.error( ERROR.category_id_empty );
-        return this.category(category).once('value').then( s => s.val() );
+    getCategory(category: string): firebase.Promise<any> {
+        if (this.isEmpty(category)) return this.error(ERROR.category_id_empty);
+        return this.category(category).once('value').then(s => s.val());
     }
 
-    isEmpty( category ) {
-        return category === void 0 || ! category;
+    isEmpty(category) {
+        return category === void 0 || !category;
     }
-    error( e ) {
-        return firebase.Promise.reject( new Error ( e ) );
+    error(e) {
+        return firebase.Promise.reject(new Error(e));
     }
-    
+
 
 
 
@@ -185,17 +187,37 @@ export class Forum {
     /// POST
     //////////////
 
-    createPost( post: POST ) : firebase.Promise < any > {
+    isEmptyCategory(post) {
+        if (post['categories'] === void 0 || post.categories.length === void 0 || post.categories.length == 0) return true;
+        else return false;
+    }
+    /**
+     * Returns error code if the input post data is wrong.
+     * @use when you need to check the post data for create/edit.
+     * @param post Post data from user
+     */
+    checkPost(post): string {
+        if (post === void 0) return ERROR.post_data_is_empty;
+        if (this.isEmptyCategory(post)) return ERROR.no_categories;
+        return null;
+    }
+    async createPost(post: POST): firebase.Promise<any> {
+        if (this.checkPost(post)) return this.error(this.checkPost(post));
+        await this.categoriesExist(post.categories);
+        let ref = this.postData().push();
+        return this.setPostData(ref, post);
+    }
 
+    async editPost(post: POST): firebase.Promise<any> {
+        if (this.checkPost(post)) return this.error(this.checkPost(post));
+        await this.categoriesExist(post.categories);
+        let p = await this.getPostData(post.key);
 
-
-        if ( post.categories === void 0 || post.categories.length === void 0 || post.categories.length == 0 ) return this.error( ERROR.no_categories );
-        
-        return this.categoriesExist( post.categories )
-            .then(() => {
-                let ref = this.postData().push();
-                return this.setPostData( ref, post );
-            });
+        let ref = this.postData(post.key);
+        return this.setPostData(ref, post);
+    }
+    deletePost(post: POST): firebase.Promise<any> {
+        return this.error(ERROR.unknown);
     }
 
 
@@ -212,17 +234,23 @@ export class Forum {
      * @return on success, a promise with post key.
      *      otherwise, .catch() will be invoked.
      */
-    setPostData( ref: firebase.database.ThenableReference, post: POST ) : firebase.Promise < any > {
+    setPostData(ref: firebase.database.Reference, post: POST): firebase.Promise<any> {
         post.key = ref.key;
         // console.log('ref: ', ref.toString());
-        post.stamp = Math.round( (new Date()).getTime() / 1000 );
-        return ref.set( post ).then( () => post.key );
+        post.stamp = Math.round((new Date()).getTime() / 1000);
+        return ref.set(post)
+            .then(() => this.setCategoryPostRelation(post.key, post.categories)) // category post relation
+            .then(() => post.key);
     }
 
 
-    getPostData( key ) : firebase.Promise<any> {
-        if ( this.isEmpty( key ) ) return this.error( ERROR.post_key_empty);
-        return this.postData( key ).once('value').then( s => s.val() );
+    getPostData(key): firebase.Promise<any> {
+        if (this.isEmpty(key)) return this.error(ERROR.post_key_empty);
+        return this.postData(key).once('value').then(s => {
+            let post = s.val();
+            if (post) return post;
+            else throw new Error(ERROR.post_not_found_by_that_key);// this.error( ERROR.post_not_found_by_that_key );
+        });
     }
 
 
@@ -255,9 +283,9 @@ export class Forum {
             
      * @endcode
      */
-    async categoriesExist( categories: Array<string> ) {
-        for( let category of categories ) {
-            await this.categoryExists( category );
+    async categoriesExist(categories: Array<string>) {
+        for (let category of categories) {
+            await this.categoryExists(category);
         }
         return true;
     }
@@ -270,15 +298,15 @@ export class Forum {
      * @return
      *      on sucess, promise with true.
      */
-    categoryExists( category: string ) : firebase.Promise<any> {
-        return this.category( category ).once('value')
-            .then( s => {
-                if ( s.val() ) return true;
+    categoryExists(category: string): firebase.Promise<any> {
+        return this.category(category).once('value')
+            .then(s => {
+                if (s.val()) return true;
                 else {
-                    this.setLastErrorMessage( `Category ${category} does not exist.`);
-                    return firebase.Promise.reject( new Error ( ERROR.category_not_exist ) );
+                    this.setLastErrorMessage(`Category ${category} does not exist.`);
+                    return firebase.Promise.reject(new Error(ERROR.category_not_exist));
                 }
-             });
+            });
     }
 
 
@@ -294,43 +322,45 @@ export class Forum {
      * 
      * 
      * 
+     * @warning it does not check if category exists or not. So you need to check it right before you cal this mehtod.
      * 
      * 
      * @param key - is the post push key.
      * @param post 
      */
-    async setCategoryPostRelation( key: string, post: POST ) {
+    async setCategoryPostRelation(key: string, categories: Array<string>) {
 
+        if (categories === void 0 || categories.length === void 0 || categories.length == 0) return;
 
-
-        if ( post === void 0 ) return;
-        if ( post.categories === void 0 || post.categories.length === void 0 || post.categories.length == 0 ) return;
-        
-        for ( let category of post.categories ) {
+        for (let category of categories) {
             console.log(`writing for category : ${category}`);
 
-            let re = await this.categoryExists( category );
-            if ( re !== false ) return;
-            
-            this.categoryPostRelation.child( category ).child( key).set( true );
+            // let re = await this.categoryExists( category );
+            // if ( re !== false ) return;
+
+            /**
+             * Does not save uid here since 'uid' cannot be trusted as of Jun 16, 2017.
+             */
+            await this.categoryPostRelation.child(category).child(key).set(true);
         }
+        await this.categoryPostRelation.child(ALL_CATEGORIES).child(key).set(true);
     }
 
 
 
-    page( o ) {
-        let $ref = this.postData().orderByKey().limitToLast( o.size );
+    page(o) {
+        let $ref = this.postData().orderByKey().limitToLast(o.size);
 
         return $ref
             .once('value')
-            .then( s => {
+            .then(s => {
                 let objects = s.val();
                 let posts = [];
-                for( let k of Object.keys(objects).reverse() ) {
-                    posts.push( objects[k] );
+                for (let k of Object.keys(objects).reverse()) {
+                    posts.push(objects[k]);
                 }
                 return posts;
-            } );
+            });
 
     }
 
@@ -348,9 +378,9 @@ export class Forum {
      */
     undefinedToNull(obj) {
         obj = JSON.parse(JSON.stringify(obj, function (k, v) {
-                if ( v === undefined ) return null;
-                else return v;
-            } ) );
+            if (v === undefined) return null;
+            else return v;
+        }));
         return obj;
     }
 
@@ -358,33 +388,33 @@ export class Forum {
 
     //// PATHS
 
-    category( name? ) : firebase.database.Reference {
-        if ( this.isEmpty(name) ) return this.root.ref.child( this.categoryPath );
-        else return this.root.ref.child( this.categoryPath ).child( name );
+    category(name?): firebase.database.Reference {
+        if (this.isEmpty(name)) return this.root.ref.child(this.categoryPath);
+        else return this.root.ref.child(this.categoryPath).child(name);
     }
 
-    get categoryPath() : string {
-        return this.path( CATEGORY_PATH );
+    get categoryPath(): string {
+        return this.path(CATEGORY_PATH);
     }
 
 
-    postData( key?: string ) : firebase.database.Reference {
-        if ( this.isEmpty(key) ) return this.root.ref.child( this.postDataPath );
-        else return  this.root.ref.child( this.postDataPath ).child( key );
+    postData(key?: string): firebase.database.Reference {
+        if (this.isEmpty(key)) return this.root.ref.child(this.postDataPath);
+        else return this.root.ref.child(this.postDataPath).child(key);
     }
-    get postDataPath() : string {
-        return this.path( POST_DATA_PATH );
+    get postDataPath(): string {
+        return this.path(POST_DATA_PATH);
     }
-    get categoryPostRelation() : firebase.database.Reference {
-        return  this.root.ref.child( this.categoryPostRelationPath );
+    get categoryPostRelation(): firebase.database.Reference {
+        return this.root.ref.child(this.categoryPostRelationPath);
     }
-    get categoryPostRelationPath() : string {
-        return this.path( CATEGORY_POST_RELATION_PATH );
+    get categoryPostRelationPath(): string {
+        return this.path(CATEGORY_POST_RELATION_PATH);
     }
-    
 
 
-    path( p: string ) {
+
+    path(p: string) {
         p = this.debugPath + p;
         // console.log(`path: ${p}`);
         return p;
@@ -396,14 +426,49 @@ export class Forum {
     ////    POST
     ////
     ////////////////////////////////////
-    
 
+
+    postApi(params): firebase.Promise<any> {
+
+        // console.log("postApi() begins with: ", params);
+
+        if (params === void 0) return this.error(ERROR.requeset_is_empty);
+        if (params.function === void 0) return this.error(ERROR.function_is_not_provided);
+        if (params.data === void 0) return this.error(ERROR.requeset_data_is_empty);
+
+        if (params.data.uid === void 0) return this.error(ERROR.uid_is_empty);
+        if (this.checkKey(params.data.uid)) return this.error(ERROR.malformed_key);
+
+        // let forum = new Forum( db.ref('/') );
+
+        // db.ref('/forum/category').once('value').then( s => {
+        //     res.send( JSON.stringify( s.val() ));
+        // });
+
+        // forum.getCategories()
+        //     .then( categories => {
+        //         res.send( JSON.stringify( categories ) );
+        //     });
+
+        // forum.getCategory( req.param('category') )
+        //     .then( c => res.send( JSON.stringify(c) ) );
+
+
+        switch (params.function) {
+            case 'create': return this.createPost(params.data);
+            case 'edit': return this.editPost(params.data);
+            case 'delete': return this.deletePost(params.data);
+            default: return this.error(ERROR.unknown_function);
+        }
+
+
+    }
 
 
     setLastErrorMessage(m) {
         this.lastErrorMessage = m;
         // console.log('------> ERROR: ', m);
     }
-    
+
 
 }
