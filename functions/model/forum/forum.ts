@@ -1,5 +1,5 @@
 import * as firebase from 'firebase/app';
-import { ERROR } from './../../error';
+import { ERROR } from '../error/error';
 
 
 
@@ -302,19 +302,12 @@ export class Forum {
     async setCategoryPostRelation( key: string, post: POST ) {
 
 
-        this.log(post);
 
-        if ( post === void 0 ) {
-            this.log(`post is undefined on setCategoryPostRelation`);
-            return;
-        }
-        if ( post.categories === void 0 || post.categories.length === void 0 || post.categories.length == 0 ) {
-            this.log(`post.categories is undfined or no categories.`);
-            return;
-        }
+        if ( post === void 0 ) return;
+        if ( post.categories === void 0 || post.categories.length === void 0 || post.categories.length == 0 ) return;
         
         for ( let category of post.categories ) {
-            this.log(`writing for category : ${category}`);
+            console.log(`writing for category : ${category}`);
 
             let re = await this.categoryExists( category );
             if ( re !== false ) return;
@@ -406,9 +399,7 @@ export class Forum {
     
 
 
-    log(m) {
-        console.log('LOG: ', m);
-    }
+
     setLastErrorMessage(m) {
         this.lastErrorMessage = m;
         // console.log('------> ERROR: ', m);

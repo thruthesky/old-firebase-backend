@@ -1,0 +1,19 @@
+{
+    "exclude": [
+        "node_modules"
+    ],
+    "compilerOptions": {
+        "outDir": "dist",
+        "target": "es5",
+        "watch": true,
+        "sourceMap": true,
+        "declaration": false,
+        "noImplicitAny": false,
+        "removeComments": true,
+        "noLib": false
+    },
+    "files": [
+        "node_modules/typescript/lib/lib.es6.d.ts",
+        "test.ts"
+    ]
+}
