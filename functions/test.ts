@@ -42,7 +42,7 @@ class AppTest {
 
   async run() {
 
-    this.log("TEST BEGIN at : " + (new Date).getMinutes() + ':' + (new Date).getSeconds());
+    this.log("TEST BEGIN at: " + (new Date).getMinutes() + ':' + (new Date).getSeconds());
 
     let re;
 
