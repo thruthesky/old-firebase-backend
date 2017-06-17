@@ -67,7 +67,7 @@ var AppTest = (function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        this.log("TEST BEGIN at: " + (new Date).getMinutes() + ':' + (new Date).getSeconds());
+                        this.log("TEST BEGIN at : " + (new Date).getMinutes() + ':' + (new Date).getSeconds());
                         return [4 /*yield*/, this.testCategoryIDFormat()];
                     case 1:
                         _a.sent();

@@ -42,7 +42,7 @@ class AppTest {
 
   async run() {
 
-    this.log("TEST BEGIN at: " + (new Date).getMinutes() + ':' + (new Date).getSeconds());
+    this.log("TEST BEGIN at : " + (new Date).getMinutes() + ':' + (new Date).getSeconds());
 
     let re;
 
@@ -50,7 +50,7 @@ class AppTest {
     await this.testCategory();
     await this.testPost();
     await this.testPostApi();
-    
+
     setTimeout(() => {
       console.log(`Tests: ${this.successCount + this.errorCount}, successes: ${this.successCount}, errors: ${this.errorCount}`);
     }, 2000);
