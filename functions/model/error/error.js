@@ -16,6 +16,7 @@ exports.ERROR = {
     unknown: 'unknown',
     category_id_empty: 'category_id_empty',
     post_key_empty: 'post_key_empty',
+    post_key_exists_on_create: 'post_key_exists_on_create',
     malformed_key: 'malformed_key',
     no_categories: 'no_categories',
     category_exists: 'category_exists',
@@ -26,6 +27,7 @@ exports.ERROR = {
     requeset_is_empty: 'requeset_is_empty',
     requeset_data_is_empty: 'requeset_data_is_empty',
     uid_is_empty: 'uid_is_empty',
-    post_not_found_by_that_key: 'post_not_found_by_that_key'
+    post_not_found_by_that_key: 'post_not_found_by_that_key',
+    permission_denied: 'permission_denied'
 };
 //# sourceMappingURL=error.js.map

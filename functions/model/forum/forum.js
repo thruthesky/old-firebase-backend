@@ -150,6 +150,8 @@ var Forum = (function () {
                     case 0:
                         if (this.checkPost(post))
                             return [2 /*return*/, this.error(this.checkPost(post))];
+                        if (post.key)
+                            return [2 /*return*/, this.error(error_1.ERROR.post_key_exists_on_create)];
                         return [4 /*yield*/, this.categoriesExist(post.categories)];
                     case 1:
                         _a.sent();
@@ -161,33 +163,60 @@ var Forum = (function () {
     };
     Forum.prototype.editPost = function (post) {
         return __awaiter(this, void 0, firebase.Promise, function () {
-            var p, ref;
+            var old_post, ref;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         if (this.checkPost(post))
                             return [2 /*return*/, this.error(this.checkPost(post))];
+                        if (!post.key)
+                            return [2 /*return*/, this.error(error_1.ERROR.post_key_empty)];
                         return [4 /*yield*/, this.categoriesExist(post.categories)];
                     case 1:
                         _a.sent();
                         return [4 /*yield*/, this.getPostData(post.key)];
                     case 2:
-                        p = _a.sent();
+                        old_post = _a.sent();
+                        if (post.uid != old_post.uid)
+                            return [2 /*return*/, this.error(error_1.ERROR.permission_denied)];
                         ref = this.postData(post.key);
-                        return [2 /*return*/, this.setPostData(ref, post)];
+                        return [2 /*return*/, this.setPostData(ref, post, old_post)];
                 }
             });
         });
     };
-    Forum.prototype.deletePost = function (post) {
-        return this.error(error_1.ERROR.unknown);
+    Forum.prototype.deletePost = function (uid, key) {
+        return __awaiter(this, void 0, firebase.Promise, function () {
+            var post;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (this.isEmpty(uid))
+                            return [2 /*return*/, this.error(error_1.ERROR.uid_is_empty)];
+                        if (this.isEmpty(key))
+                            return [2 /*return*/, this.error(error_1.ERROR.post_key_empty)];
+                        return [4 /*yield*/, this.getPostData(key)];
+                    case 1:
+                        post = _a.sent();
+                        if (uid != post.uid)
+                            return [2 /*return*/, this.error(error_1.ERROR.permission_denied)];
+                        return [4 /*yield*/, this.deleteCategoryPostRelation(post.key, post.categories)];
+                    case 2:
+                        _a.sent();
+                        return [4 /*yield*/, this.postData(key).set(null)];
+                    case 3:
+                        _a.sent();
+                        return [2 /*return*/, key];
+                }
+            });
+        });
     };
-    Forum.prototype.setPostData = function (ref, post) {
+    Forum.prototype.setPostData = function (ref, post, old_post) {
         var _this = this;
         post.key = ref.key;
         post.stamp = Math.round((new Date()).getTime() / 1000);
         return ref.set(post)
-            .then(function () { return _this.setCategoryPostRelation(post.key, post.categories); })
+            .then(function () { return _this.setCategoryPostRelation(post.key, post, old_post); })
             .then(function () { return post.key; });
     };
     Forum.prototype.getPostData = function (key) {
@@ -236,31 +265,64 @@ var Forum = (function () {
             }
         });
     };
-    Forum.prototype.setCategoryPostRelation = function (key, categories) {
+    Forum.prototype.setCategoryPostRelation = function (key, new_post, old_post) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _i, _a, category;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        if (!new_post || !new_post.categories || !new_post.categories.length)
+                            return [2 /*return*/];
+                        if (!old_post) return [3 /*break*/, 2];
+                        return [4 /*yield*/, this.deleteCategoryPostRelation(old_post.key, old_post.categories)];
+                    case 1:
+                        _b.sent();
+                        _b.label = 2;
+                    case 2:
+                        _i = 0, _a = new_post.categories;
+                        _b.label = 3;
+                    case 3:
+                        if (!(_i < _a.length)) return [3 /*break*/, 6];
+                        category = _a[_i];
+                        return [4 /*yield*/, this.categoryPostRelation.child(category).child(key).set(true)];
+                    case 4:
+                        _b.sent();
+                        _b.label = 5;
+                    case 5:
+                        _i++;
+                        return [3 /*break*/, 3];
+                    case 6: return [4 /*yield*/, this.categoryPostRelation.child(forum_interface_1.ALL_CATEGORIES).child(key).set(true)];
+                    case 7:
+                        _b.sent();
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
+    Forum.prototype.deleteCategoryPostRelation = function (key, categories) {
         return __awaiter(this, void 0, void 0, function () {
             var _i, categories_2, category;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        if (categories === void 0 || categories.length === void 0 || categories.length == 0)
-                            return [2 /*return*/];
+                        if (!(categories && categories.length)) return [3 /*break*/, 6];
                         _i = 0, categories_2 = categories;
                         _a.label = 1;
                     case 1:
                         if (!(_i < categories_2.length)) return [3 /*break*/, 4];
                         category = categories_2[_i];
-                        console.log("writing for category : " + category);
-                        return [4 /*yield*/, this.categoryPostRelation.child(category).child(key).set(true)];
+                        return [4 /*yield*/, this.categoryPostRelation.child(category).child(key).set(null)];
                     case 2:
                         _a.sent();
                         _a.label = 3;
                     case 3:
                         _i++;
                         return [3 /*break*/, 1];
-                    case 4: return [4 /*yield*/, this.categoryPostRelation.child(forum_interface_1.ALL_CATEGORIES).child(key).set(true)];
+                    case 4: return [4 /*yield*/, this.categoryPostRelation.child(forum_interface_1.ALL_CATEGORIES).child(key).set(null)];
                     case 5:
                         _a.sent();
-                        return [2 /*return*/];
+                        _a.label = 6;
+                    case 6: return [2 /*return*/];
                 }
             });
         });

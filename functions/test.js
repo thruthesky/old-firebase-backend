@@ -43,8 +43,10 @@ var app = admin.initializeApp({
 });
 var db = app.database();
 var forum_1 = require("./model/forum/forum");
+var forum_interface_1 = require("./model/forum/forum.interface");
 var error_1 = require("./model/error/error");
 var chalk = require("chalk");
+;
 function datetime() {
     var d = new Date();
     return d.getMonth() + '-' + d.getDate() + ':' + d.getHours() + ':' + d.getMinutes() + ':' + d.getSeconds();
@@ -60,6 +62,7 @@ var AppTest = (function () {
     }
     AppTest.prototype.run = function () {
         return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
             var re;
             return __generator(this, function (_a) {
                 switch (_a.label) {
@@ -74,10 +77,12 @@ var AppTest = (function () {
                         return [4 /*yield*/, this.testPost()];
                     case 3:
                         _a.sent();
-                        return [4 /*yield*/, this.testPostCrud()];
+                        return [4 /*yield*/, this.testPostApi()];
                     case 4:
                         _a.sent();
-                        console.log("Tests: " + (this.successCount + this.errorCount) + ", successes: " + this.successCount + ", errors: " + this.errorCount);
+                        setTimeout(function () {
+                            console.log("Tests: " + (_this.successCount + _this.errorCount) + ", successes: " + _this.successCount + ", errors: " + _this.errorCount);
+                        }, 2000);
                         return [2 /*return*/];
                 }
             });
@@ -125,14 +130,16 @@ var AppTest = (function () {
             var re, category, abc_category, categories;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, this.forum.createCategory({ id: '' })
-                            .then(function (x) { return _this.error('Creating a category with empty data must be failed.'); })
-                            .catch(function (e) {
-                            if (e.message == error_1.ERROR.malformed_key)
-                                _this.success("Creating with empty data failed properly failed");
-                            else
-                                _this.error("Something happened on creating category with empty data.");
-                        })];
+                    case 0:
+                        console.log("\n =========================== testCategory() =========================== ");
+                        return [4 /*yield*/, this.forum.createCategory({ id: '' })
+                                .then(function (x) { return _this.error('Creating a category with empty data must be failed.'); })
+                                .catch(function (e) {
+                                if (e.message == error_1.ERROR.malformed_key)
+                                    _this.success("Creating with empty data failed properly failed");
+                                else
+                                    _this.error("Something happened on creating category with empty data.");
+                            })];
                     case 1:
                         _a.sent();
                         category = { id: 'category' + datetime(), name: 'Books' };
@@ -261,10 +268,11 @@ var AppTest = (function () {
     AppTest.prototype.testPost = function () {
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
-            var re, post, key;
+            var re, post, key, key_flower, key_book;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
+                        console.log("\n =========================== testPost() =========================== ");
                         post = {};
                         return [4 /*yield*/, this.forum.createPost(post)
                                 .catch(function (e) { return e.message; })];
@@ -277,10 +285,15 @@ var AppTest = (function () {
                     case 2:
                         re = _a.sent();
                         this.expect(re, error_1.ERROR.category_not_exist, "Post create : " + this.forum.lastErrorMessage);
+                        post.key = '-key-13245abc';
+                        return [4 /*yield*/, this.forum.createPost(post).catch(function (e) { return _this.expect(e.message, error_1.ERROR.post_key_exists_on_create, 'Post create with key properly failed.'); })];
+                    case 3:
+                        _a.sent();
+                        post.key = '';
                         post.categories = ['abc'];
                         post.subject = "Opo";
                         return [4 /*yield*/, this.forum.createPost(post)];
-                    case 3:
+                    case 4:
                         re = _a.sent();
                         this.expect(re['message'], void 0, "Post created with key: " + re);
                         return [4 /*yield*/, this.forum.getPostData(re)
@@ -291,33 +304,130 @@ var AppTest = (function () {
                                     _this.error("failed to getPost() : subject is wrong");
                             })
                                 .catch(function (e) { return _this.error(e); })];
-                    case 4:
+                    case 5:
                         _a.sent();
                         return [4 /*yield*/, this.forum.getPostData('-12345abc----')
                                 .then(function (p) { return _this.error("Wrong post key to get a post must be failed. result: " + JSON.stringify(p)); })
                                 .catch(function (e) { return _this.expect(e.message, error_1.ERROR.post_not_found_by_that_key, "post not found with wrong key properly failed"); })];
-                    case 5:
-                        _a.sent();
-                        return [4 /*yield*/, this.forum.createPost({ categories: ['abc'], subject: 'hi' })];
                     case 6:
+                        _a.sent();
+                        post = { categories: ['abc'], subject: "C: " + this.testSubject() };
+                        return [4 /*yield*/, this.forum.createPost(post)];
+                    case 7:
                         key = _a.sent();
                         this.forum.getPostData(key)
-                            .then(function (post) {
-                            _this.expect(post.subject, 'hi', "Success getPostData()");
+                            .then(function (p) {
+                            _this.expect(p.categories.length, 1, "getPostData() success with: " + JSON.stringify(p));
+                            _this.expect(p.categories[0], 'abc', "category match");
+                            _this.forum.categoryPostRelation.child(p.categories[0]).child(p.key).once('value')
+                                .then(function (s) { return _this.expect(s.val(), true, "Post exists under " + p.categories[0] + " category !!"); });
                         })
                             .catch(function (e) { return _this.error("getPostData() failed with key: " + key); });
+                        post.key = '';
+                        return [4 /*yield*/, this.forum.editPost(post).then(function (key) { return _this.error("Post edit with no key must be failed"); })
+                                .catch(function (e) { return _this.expect(e.message, error_1.ERROR.post_key_empty, "Post edit with no key failed."); })];
+                    case 8:
+                        _a.sent();
+                        post.key = key + 'wrong';
+                        return [4 /*yield*/, this.forum.editPost(post).then(function () { return _this.error("Post edit with wrong key must be failed"); })
+                                .catch(function (e) { return _this.expect(e.message, error_1.ERROR.post_not_found_by_that_key, "Post edit with wrong key failed."); })];
+                    case 9:
+                        _a.sent();
+                        post.key = key;
+                        post.categories = ['abc', 'flower', 'def'];
+                        return [4 /*yield*/, this.forum.editPost(post)
+                                .then(function (key) {
+                                _this.error("Post edit with wrong categroy - must be failed. post data:" + JSON.stringify(post));
+                            })
+                                .catch(function (e) { return _this.expect(e.message, error_1.ERROR.category_not_exist, "Post edit with wrong category failed."); })];
+                    case 10:
+                        _a.sent();
+                        post.categories = ['flower'];
+                        return [4 /*yield*/, this.forum.editPost(post)
+                                .then(function (key) {
+                                _this.success("Post edit with different categroy success.");
+                                _this.forum.getPostData(key).then(function (p) {
+                                    _this.forum.categoryPostRelation.child('flower').child(p.key).once('value')
+                                        .then(function (s) { return _this.expect(s.val(), true, "Post exists under flower category !!"); });
+                                    _this.forum.categoryPostRelation.child('abc').child(p.key).once('value')
+                                        .then(function (s) { return _this.expect(s.val(), null, "Post does not exist under abc category !!"); });
+                                });
+                            })
+                                .catch(function (e) { return _this.error("post edit with different category must success."); })];
+                    case 11:
+                        _a.sent();
+                        post.categories = ['abc', 'flower'];
+                        return [4 /*yield*/, this.forum.editPost(post)
+                                .then(function (key) {
+                                _this.success("Post edit with different categroy success.");
+                                _this.forum.getPostData(key).then(function (p) {
+                                    _this.forum.categoryPostRelation.child('flower').child(p.key).once('value')
+                                        .then(function (s) { return _this.expect(s.val(), true, "Post exists under flower category !!"); });
+                                    _this.forum.categoryPostRelation.child('abc').child(p.key).once('value')
+                                        .then(function (s) { return _this.expect(s.val(), true, "Post exists under abc category !!"); });
+                                });
+                            })
+                                .catch(function (e) { return _this.error("post edit with different category must success."); })];
+                    case 12:
+                        _a.sent();
+                        post.subject = "edited !!";
+                        post.content = "content is edited";
+                        return [4 /*yield*/, this.forum.editPost(post).then(function (key) {
+                                _this.forum.getPostData(key).then(function (p) {
+                                    _this.expect(p.subject, post.subject, "Subject edited");
+                                    _this.expect(p.content, post.content, "Content edited");
+                                });
+                            })];
+                    case 13:
+                        _a.sent();
+                        return [4 /*yield*/, this.forum.createPost({ categories: ['flower'], subject: 'I leave you a flower', uid: '-key-12345a' })];
+                    case 14:
+                        key_flower = _a.sent();
+                        return [4 /*yield*/, this.forum.createPost({ categories: ['abc'], subject: 'I leave you a book', uid: this.testUid() })];
+                    case 15:
+                        key_book = _a.sent();
+                        return [4 /*yield*/, this.forum.category('abc').child(key_book).once('value').then(function (x) { return _this.success(key_book + " exists under abc category"); }).catch(function (e) { return _this.error(e.message); })];
+                    case 16:
+                        _a.sent();
+                        return [4 /*yield*/, this.forum.category(forum_interface_1.ALL_CATEGORIES).child(key_book).once('value').then(function (x) { return _this.success(key_book + " exists under all category"); }).catch(function (e) { return _this.error(e.message); })];
+                    case 17:
+                        _a.sent();
+                        return [4 /*yield*/, this.forum.deletePost('', '').catch(function (e) { return _this.expect(e.message, error_1.ERROR.uid_is_empty, "deletePost() must have uid"); })];
+                    case 18:
+                        _a.sent();
+                        return [4 /*yield*/, this.forum.deletePost('a', '').catch(function (e) { return _this.expect(e.message, error_1.ERROR.post_key_empty, "deletePost() must have key"); })];
+                    case 19:
+                        _a.sent();
+                        return [4 /*yield*/, this.forum.deletePost('-key-ddd', key_book)
+                                .then(function (key) { return _this.error("deletePost() with worng uid must be failed"); })
+                                .catch(function (e) { return _this.expect(e.message, error_1.ERROR.permission_denied, "deletePost() with wrong uid properly failed with permission denied."); })];
+                    case 20:
+                        _a.sent();
+                        return [4 /*yield*/, this.forum.deletePost(this.testUid(), key_book)
+                                .then(function (key) { return _this.success("deletePost( " + key + " ) was sucess with " + key_book); })
+                                .catch(function (e) { return _this.error("deletePost() failed: " + e.message); })];
+                    case 21:
+                        _a.sent();
+                        return [4 /*yield*/, this.forum.category('abc').child(key_book).once('value').then(function (s) { return _this.expect(s.val(), null, key_book + " does not exist under abc category"); }).catch(function (e) { return _this.error(e.message); })];
+                    case 22:
+                        _a.sent();
+                        return [4 /*yield*/, this.forum.category(forum_interface_1.ALL_CATEGORIES).child(key_book).once('value').then(function (s) { return _this.expect(s.val(), null, key_book + " does not exist under all category"); }).catch(function (e) { return _this.error(e.message); })];
+                    case 23:
+                        _a.sent();
                         return [2 /*return*/];
                 }
             });
         });
     };
-    AppTest.prototype.testPostCrud = function () {
+    AppTest.prototype.testPostApi = function () {
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
-            var req;
+            var req, key;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, this.forum.postApi({}).catch(function (e) { return _this.expect(e.message, error_1.ERROR.function_is_not_provided, 'function not providing test.'); })];
+                    case 0:
+                        console.log("\n =========================== testPostApi() =========================== ");
+                        return [4 /*yield*/, this.forum.postApi({}).catch(function (e) { return _this.expect(e.message, error_1.ERROR.function_is_not_provided, 'function not providing test.'); })];
                     case 1:
                         _a.sent();
                         return [4 /*yield*/, this.forum.postApi({ function: 'no-function-name' })
@@ -331,14 +441,14 @@ var AppTest = (function () {
                         req = {
                             function: 'create',
                             data: {
-                                'subject': 'post create test by api',
-                                'content': 'This is content',
-                                'uid': '-12345abc'
+                                subject: 'post create test by api',
+                                content: 'This is content',
+                                uid: this.testUid()
                             }
                         };
                         return [4 /*yield*/, this.forum.postApi(req)
                                 .then(function () { return _this.error("Calling postApi with no category must be failed."); })
-                                .catch(function (e) { return _this.expect(e.message, error_1.ERROR.no_categories, 'postApi() for creating a post with no categor properly failed'); })];
+                                .catch(function (e) { return _this.expect(e.message, error_1.ERROR.no_categories, 'postApi() for creating a post with no category properly failed'); })];
                     case 4:
                         _a.sent();
                         req.data['categories'] = ['wrong-category'];
@@ -349,9 +459,43 @@ var AppTest = (function () {
                         _a.sent();
                         req.data['categories'] = ['abc', 'flower'];
                         return [4 /*yield*/, this.forum.postApi(req)
-                                .then(function (key) { return _this.success("A post has created with: " + key); })
+                                .then(function (key) { _this.success("Post create with postApi(function:create) success . key: " + key); return key; })
                                 .catch(function (e) { return _this.error("A post should be created."); })];
                     case 6:
+                        key = _a.sent();
+                        console.log("KEY ===> ", key);
+                        req.function = 'edit';
+                        req.data.key = key;
+                        req.data.categories = [];
+                        req.data.subject = "Subject updated...!";
+                        req.data.content = "Content updated...!";
+                        return [4 /*yield*/, this.forum.postApi(req)
+                                .then(function () { return _this.error("Calling postApi with empty category must be failed."); })
+                                .catch(function (e) { return _this.expect(e.message, error_1.ERROR.no_categories, 'postApi() for editing a post with no category properly failed'); })];
+                    case 7:
+                        _a.sent();
+                        req.data.categories = ['abc', 'def', 'flower'];
+                        return [4 /*yield*/, this.forum.postApi(req)
+                                .then(function () { return _this.error("Calling postApi with empty category must be failed."); })
+                                .catch(function (e) { return _this.expect(e.message, error_1.ERROR.category_not_exist, 'postApi() for editing a post with wrong category properly failed'); })];
+                    case 8:
+                        _a.sent();
+                        req.data.categories = ['abc'];
+                        return [4 /*yield*/, this.forum.postApi(req)
+                                .then(function (key) {
+                                _this.success("Post edit success with: " + key);
+                                _this.forum.getPostData(key).then(function (p) {
+                                    _this.expect(p.key, req.data.key, "postApi(function:edit) key match");
+                                    _this.expect(p.subject, req.data.subject, "Subject edit with postApi(function:eidt) success.");
+                                    _this.expect(p.content, req.data.content, "Content edit with postApi(function:eidt) success.");
+                                    _this.forum.categoryPostRelation.child('flower').child(p.key).once('value')
+                                        .then(function (s) { return _this.expect(s.val(), null, "Post does not exist under flower category !!"); });
+                                    _this.forum.categoryPostRelation.child('abc').child(p.key).once('value')
+                                        .then(function (s) { return _this.expect(s.val(), true, "Post exists under abc category !!"); });
+                                });
+                            })
+                                .catch(function (e) { return _this.error("Edit should be success."); })];
+                    case 9:
                         _a.sent();
                         return [2 /*return*/];
                 }

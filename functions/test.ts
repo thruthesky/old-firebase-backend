@@ -10,9 +10,12 @@ const db = app.database();
 //import { Post, POST } from './model/post';
 
 import { Forum } from './model/forum/forum';
-import { POST, CATEGORY } from './model/forum/forum.interface';
+import { POST, CATEGORY, ALL_CATEGORIES } from './model/forum/forum.interface';
 import { ERROR, isError } from './model/error/error';
 import * as chalk from 'chalk';
+
+interface POST_REQUEST { function: string, data: POST };
+
 
 function datetime() {
   let d = new Date();
@@ -46,16 +49,13 @@ class AppTest {
     await this.testCategoryIDFormat();
     await this.testCategory();
     await this.testPost();
-    await this.testPostCrud();
+    await this.testPostApi();
+    
+    setTimeout(() => {
+      console.log(`Tests: ${this.successCount + this.errorCount}, successes: ${this.successCount}, errors: ${this.errorCount}`);
+    }, 2000);
 
-
-    // user test
-    // user auth test each different users.
-    // user block test
-
-    console.log(`Tests: ${this.successCount + this.errorCount}, successes: ${this.successCount}, errors: ${this.errorCount}`);
   }
-
 
   async testCategoryIDFormat() {
 
@@ -83,6 +83,8 @@ class AppTest {
   }
 
   async testCategory() {
+
+    console.log("\n =========================== testCategory() =========================== ")
 
     let re;
 
@@ -230,6 +232,8 @@ class AppTest {
 
   async testPost() {
 
+    console.log("\n =========================== testPost() =========================== ");
+
     let re;
 
     /// create a post with empty data. no category will be an error.
@@ -246,6 +250,13 @@ class AppTest {
 
     this.expect(re, ERROR.category_not_exist, `Post create : ` + this.forum.lastErrorMessage);
 
+    /// post create with a key should be failed. when you crate a post, there must be no key.
+    post.key = '-key-13245abc';
+    await this.forum.createPost( post ).catch( e => this.expect( e.message, ERROR.post_key_exists_on_create, 'Post create with key properly failed.' ));
+    post.key = '';
+
+
+    ///
     post.categories = ['abc'];
     post.subject = "Opo";
     re = await this.forum.createPost(post);
@@ -261,24 +272,123 @@ class AppTest {
     /// post get with wrong key
 
     await this.forum.getPostData('-12345abc----')
-      .then( p => this.error("Wrong post key to get a post must be failed. result: " + JSON.stringify(p)))
-      .catch( e => this.expect( e.message, ERROR.post_not_found_by_that_key, "post not found with wrong key properly failed" ) );
+      .then(p => this.error("Wrong post key to get a post must be failed. result: " + JSON.stringify(p)))
+      .catch(e => this.expect(e.message, ERROR.post_not_found_by_that_key, "post not found with wrong key properly failed"));
 
-    /// post get
-    let key = await this.forum.createPost( { categories: ['abc'], subject: 'hi' });
-    this.forum.getPostData( key )
-      .then( (post: POST) => {
-        this.expect( post.subject, 'hi', "Success getPostData()");
+
+
+    /// post create and get
+    post = { categories: ['abc'], subject: "C: " + this.testSubject() };
+    let key = await this.forum.createPost(post);
+    this.forum.getPostData(key)
+      .then((p: POST) => {
+        // this.expect( post.subject, 'hi', "Success getPostData()");
+        this.expect(p.categories.length, 1, "getPostData() success with: " + JSON.stringify(p));
+        this.expect(p.categories[0], 'abc', "category match");
+        this.forum.categoryPostRelation.child(p.categories[0]).child(p.key).once('value')
+          .then(s => this.expect(s.val(), true, "Post exists under " + p.categories[0] + " category !!"))
       })
-      .catch( e => this.error("getPostData() failed with key: " + key ));
+      .catch(e => this.error("getPostData() failed with key: " + key));
 
 
-
-
-
+    /// post edit with no key
+    post.key = '';
+    await this.forum.editPost(post).then(key => this.error("Post edit with no key must be failed"))
+      .catch(e => this.expect(e.message, ERROR.post_key_empty, "Post edit with no key failed."));
 
     /// post edit with wrong key
-    /// post edit
+    post.key = key + 'wrong';
+    await this.forum.editPost(post).then(() => this.error("Post edit with wrong key must be failed"))
+      .catch(e => this.expect(e.message, ERROR.post_not_found_by_that_key, "Post edit with wrong key failed."));
+
+
+    /// post edit with wrong category
+    post.key = key;
+    post.categories = ['abc', 'flower', 'def'];
+    await this.forum.editPost(post)
+      .then(key => {
+        this.error("Post edit with wrong categroy - must be failed. post data:" + JSON.stringify(post));
+      })
+      .catch(e => this.expect(e.message, ERROR.category_not_exist, "Post edit with wrong category failed."));
+
+
+
+    /// post edit with different category & check if the post does not exist under old category.
+    post.categories = ['flower'];
+    await this.forum.editPost(post)
+      .then(key => {
+        this.success("Post edit with different categroy success.");
+        this.forum.getPostData(key).then((p: POST) => {
+          this.forum.categoryPostRelation.child('flower').child(p.key).once('value')
+            .then(s => this.expect(s.val(), true, "Post exists under flower category !!"));
+          this.forum.categoryPostRelation.child('abc').child(p.key).once('value')
+            .then(s => this.expect(s.val(), null, "Post does not exist under abc category !!"));
+
+        });
+      })
+      .catch(e => this.error("post edit with different category must success."));
+
+
+    /// post edit with two category and check if the post exists under the two categories.
+    post.categories = ['abc', 'flower'];
+    await this.forum.editPost(post)
+      .then(key => {
+        this.success("Post edit with different categroy success.");
+        this.forum.getPostData(key).then((p: POST) => {
+          this.forum.categoryPostRelation.child('flower').child(p.key).once('value')
+            .then(s => this.expect(s.val(), true, "Post exists under flower category !!"));
+          this.forum.categoryPostRelation.child('abc').child(p.key).once('value')
+            .then(s => this.expect(s.val(), true, "Post exists under abc category !!"));
+        });
+      })
+      .catch(e => this.error("post edit with different category must success."));
+
+
+    /// post edit subject, content
+    post.subject = "edited !!";
+    post.content = "content is edited";
+    await this.forum.editPost(post).then(key => {
+      this.forum.getPostData(key).then((p: POST) => {
+        this.expect(p.subject, post.subject, "Subject edited");
+        this.expect(p.content, post.content, "Content edited");
+      })
+    });
+
+
+
+    // delete test.
+    let key_flower = await this.forum.createPost(  { categories: ['flower'], subject: 'I leave you a flower', uid: '-key-12345a' } );
+    let key_book = await this.forum.createPost( { categories: ['abc'], subject: 'I leave you a book', uid: this.testUid() } );
+
+    // category check
+    await this.forum.category( 'abc' ).child( key_book ).once('value').then( x => this.success(`${key_book} exists under abc category`) ).catch( e => this.error(e.message));
+    await this.forum.category( ALL_CATEGORIES ).child( key_book ).once('value').then( x => this.success(`${key_book} exists under all category`) ).catch( e => this.error(e.message));
+
+    /// delete with no uid, no key
+    await this.forum.deletePost( '', '' ).catch( e => this.expect( e.message, ERROR.uid_is_empty, "deletePost() must have uid"));
+    await this.forum.deletePost( 'a', '' ).catch( e => this.expect( e.message, ERROR.post_key_empty, "deletePost() must have key"));
+
+    /// delete with wrong uid
+    await this.forum.deletePost( '-key-ddd', key_book )
+      .then( key => this.error("deletePost() with worng uid must be failed"))
+      .catch( e => this.expect( e.message, ERROR.permission_denied, "deletePost() with wrong uid properly failed with permission denied."));
+
+    /// delete
+    await this.forum.deletePost( this.testUid(), key_book )
+      .then( key => this.success(`deletePost( ${key} ) was sucess with ${key_book}`))
+      .catch( e => this.error(`deletePost() failed: ${e.message}`));
+
+    // category check after delete
+    await this.forum.category( 'abc' ).child( key_book ).once('value').then( s => this.expect(s.val(), null, `${key_book} does not exist under abc category`) ).catch( e => this.error(e.message));
+    await this.forum.category( ALL_CATEGORIES ).child( key_book ).once('value').then( s => this.expect(s.val(), null, `${key_book} does not exist under all category`) ).catch( e => this.error(e.message));
+
+
+    
+
+
+
+
+
 
     /// post delete with wrong key
     /// post delete
@@ -286,6 +396,7 @@ class AppTest {
 
     /// post like with wrong key
     /// post like
+
     /// post dislike with wrong key
     /// post dislike
 
@@ -294,7 +405,10 @@ class AppTest {
 
   }
 
-  async testPostCrud() {
+  async testPostApi() {
+
+    console.log("\n =========================== testPostApi() =========================== ");
+
     await this.forum.postApi({}).catch(e => this.expect(e.message, ERROR.function_is_not_provided, 'function not providing test.'));
     await this.forum.postApi({ function: 'no-function-name' })
       .catch(e => this.expect(e.message, ERROR.requeset_data_is_empty, 'function is give but data is not given.'));
@@ -303,18 +417,20 @@ class AppTest {
       .catch(e => this.expect(e.message, ERROR.unknown_function, 'Wrong function name test'));
 
 
-    let req = {
+
+    // create edit
+    let req: POST_REQUEST = {
       function: 'create',
       data: {
-        'subject': 'post create test by api',
-        'content': 'This is content',
-        'uid': '-12345abc'
+        subject: 'post create test by api',
+        content: 'This is content',
+        uid: this.testUid()
       }
     };
 
     await this.forum.postApi(req)
       .then(() => this.error("Calling postApi with no category must be failed."))
-      .catch(e => this.expect(e.message, ERROR.no_categories, 'postApi() for creating a post with no categor properly failed'));
+      .catch(e => this.expect(e.message, ERROR.no_categories, 'postApi() for creating a post with no category properly failed'));
 
 
     req.data['categories'] = ['wrong-category'];
@@ -323,14 +439,62 @@ class AppTest {
       .catch(e => this.expect(e.message, ERROR.category_not_exist, 'postApi() for creating a post with wrong category properly failed'));
 
     req.data['categories'] = ['abc', 'flower'];
-    await this.forum.postApi(req)
-      .then(key => this.success("A post has created with: " + key))
+    let key = await this.forum.postApi(req)
+      .then(key => { this.success("Post create with postApi(function:create) success . key: " + key); return key; })
       .catch(e => this.error("A post should be created."));
+
+
+      console.log("KEY ===> ", key);
+
+    /// edit with no category
+    req.function = 'edit';
+    req.data.key = key;
+    req.data.categories = [];
+    req.data.subject = "Subject updated...!";
+    req.data.content = "Content updated...!";
+    await this.forum.postApi(req)
+      .then(() => this.error("Calling postApi with empty category must be failed."))
+      .catch(e => this.expect(e.message, ERROR.no_categories, 'postApi() for editing a post with no category properly failed'));
+
+
+    /// edit with wrong category
+    req.data.categories = ['abc', 'def', 'flower'];
+    await this.forum.postApi(req)
+      .then(() => this.error("Calling postApi with empty category must be failed."))
+      .catch(e => this.expect(e.message, ERROR.category_not_exist, 'postApi() for editing a post with wrong category properly failed'));
+
+    /// edit and check
+    req.data.categories = ['abc'];
+    await this.forum.postApi(req)
+      .then(key => {
+        this.success("Post edit success with: " + key);
+        this.forum.getPostData( key ).then((p:POST) => {
+
+          this.expect( p.key, req.data.key, "postApi(function:edit) key match");
+          this.expect( p.subject, req.data.subject, "Subject edit with postApi(function:eidt) success.");
+          this.expect( p.content, req.data.content, "Content edit with postApi(function:eidt) success.");
+
+          this.forum.categoryPostRelation.child('flower').child(p.key).once('value')
+            .then(s => this.expect(s.val(), null, "Post does not exist under flower category !!"));
+          this.forum.categoryPostRelation.child('abc').child(p.key).once('value')
+            .then(s => this.expect(s.val(), true, "Post exists under abc category !!"));
+
+        })
+      })
+      .catch(e => this.error("Edit should be success."));
+
+
+
+
+
 
 
     ///
 
     /// edit with wrong post key
+
+
+
     /// edit with worng category
     /// edit categoriy
     /// edit subject

@@ -13,11 +13,11 @@ var app = admin.initializeApp({
 var db = app.database();
 exports.postApi = functions.https.onRequest(function (req, res) {
     cors(req, res, function () {
-        console.log("postApi() begins...");
+        console.log("postApi() begins!");
         var forum = new forum_1.Forum(db.ref('/'));
-        forum.postApi(req.query)
-            .then(function (x) { return res.send(x); })
-            .catch(function (e) { return res.send({ error: e.message }); });
+        forum.postApi(req.body)
+            .then(function (x) { return res.send({ code: 0, data: x }); })
+            .catch(function (e) { return res.send({ code: e.message, message: forum.getLastErrorMessage }); });
         console.log("Send");
     });
 });
