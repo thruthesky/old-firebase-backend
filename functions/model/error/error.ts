@@ -13,6 +13,7 @@ export const ERROR = {
     unknown: 'unknown',
     category_id_empty: 'category_id_empty',
     post_key_empty: 'post_key_empty',
+    post_key_exists_on_create: 'post_key_exists_on_create',
     malformed_key:'malformed_key',
     no_categories: 'no_categories',
     category_exists: 'category_exists',
@@ -27,7 +28,8 @@ export const ERROR = {
     timeout: 'timeout',
     json_parse: 'json_parse',
     disconnected: 'disconnected',
-    response_is_empty: 'response_is_empty'
+    response_is_empty: 'response_is_empty',
+    permission_denied: 'permission_denied'
 };
 
 

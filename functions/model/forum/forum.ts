@@ -203,6 +203,7 @@ export class Forum {
     }
     async createPost(post: POST): firebase.Promise<any> {
         if (this.checkPost(post)) return this.error(this.checkPost(post));
+        if ( post.key ) return this.error( ERROR.post_key_exists_on_create );
         await this.categoriesExist(post.categories);
         let ref = this.postData().push();
         return this.setPostData(ref, post);
@@ -210,14 +211,29 @@ export class Forum {
 
     async editPost(post: POST): firebase.Promise<any> {
         if (this.checkPost(post)) return this.error(this.checkPost(post));
+        if ( ! post.key ) return this.error( ERROR.post_key_empty );
         await this.categoriesExist(post.categories);
-        let p = await this.getPostData(post.key);
+        let old_post = await this.getPostData(post.key);
 
+        if ( post.uid != old_post.uid ) return this.error( ERROR.permission_denied );
+    
         let ref = this.postData(post.key);
-        return this.setPostData(ref, post);
+        return this.setPostData(ref, post, old_post);
     }
-    deletePost(post: POST): firebase.Promise<any> {
-        return this.error(ERROR.unknown);
+
+    async deletePost(uid: string, key: string): firebase.Promise<any> {
+        if ( this.isEmpty(uid) ) return this.error(ERROR.uid_is_empty);
+        if ( this.isEmpty(key) ) return this.error(ERROR.post_key_empty);
+
+        let post: POST = await this.getPostData( key );
+        
+
+        if ( uid != post.uid ) return this.error( ERROR.permission_denied );
+
+        await this.deleteCategoryPostRelation( post.key, post.categories );
+        await this.postData( key ).set( null );
+
+        return key;
     }
 
 
@@ -234,12 +250,12 @@ export class Forum {
      * @return on success, a promise with post key.
      *      otherwise, .catch() will be invoked.
      */
-    setPostData(ref: firebase.database.Reference, post: POST): firebase.Promise<any> {
+    setPostData(ref: firebase.database.Reference, post: POST, old_post?: POST ): firebase.Promise<any> {
         post.key = ref.key;
         // console.log('ref: ', ref.toString());
         post.stamp = Math.round((new Date()).getTime() / 1000);
         return ref.set(post)
-            .then(() => this.setCategoryPostRelation(post.key, post.categories)) // category post relation
+            .then(() => this.setCategoryPostRelation(post.key, post, old_post)) // category post relation
             .then(() => post.key);
     }
 
@@ -299,8 +315,10 @@ export class Forum {
      *      on sucess, promise with true.
      */
     categoryExists(category: string): firebase.Promise<any> {
+
         return this.category(category).once('value')
             .then(s => {
+                // if ( category == 'def' ) debugger;
                 if (s.val()) return true;
                 else {
                     this.setLastErrorMessage(`Category ${category} does not exist.`);
@@ -318,7 +336,8 @@ export class Forum {
     /**
      * 
      * 
-     * @note category exsit checkup must be done here.
+     * @note new_categories exsitence must be checked right before this method.
+     * @note this will remove old categories.
      * 
      * 
      * 
@@ -328,22 +347,46 @@ export class Forum {
      * @param key - is the post push key.
      * @param post 
      */
-    async setCategoryPostRelation(key: string, categories: Array<string>) {
+    async setCategoryPostRelation(key: string, new_post: POST, old_post?: POST ) {
 
-        if (categories === void 0 || categories.length === void 0 || categories.length == 0) return;
 
-        for (let category of categories) {
-            console.log(`writing for category : ${category}`);
 
-            // let re = await this.categoryExists( category );
-            // if ( re !== false ) return;
 
+        if ( !new_post || !new_post.categories || !new_post.categories.length ) return;
+        
+        // delete old categories.
+        // if ( old_post && old_post.categories && old_post.categories.length  ) {
+        //     for (let category of old_post.categories) {
+        //         await this.categoryPostRelation.child( category ).child(old_post.key).set( null );
+        //     }
+        // }
+        if ( old_post ) await this.deleteCategoryPostRelation( old_post.key, old_post.categories );
+
+
+        for (let category of new_post.categories) {
+            // console.log(`writing for category : ${category}`);
             /**
              * Does not save uid here since 'uid' cannot be trusted as of Jun 16, 2017.
              */
             await this.categoryPostRelation.child(category).child(key).set(true);
         }
         await this.categoryPostRelation.child(ALL_CATEGORIES).child(key).set(true);
+    }
+
+    /**
+     * Deletes category and post relationsip.
+     * @Warning it deletes the 'ALL_CATEGORIES' relationship also.
+     * 
+     * @param key 
+     * @param categories 
+     */
+    async deleteCategoryPostRelation( key, categories ) {
+        if ( categories && categories.length  ) {
+            for (let category of categories) {
+                await this.categoryPostRelation.child( category ).child(key).set( null );
+            }
+            await this.categoryPostRelation.child(ALL_CATEGORIES).child(key).set( null );
+        }
     }
 
 
