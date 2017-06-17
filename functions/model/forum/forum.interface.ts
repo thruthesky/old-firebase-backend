@@ -26,3 +26,10 @@ export interface POST {
     sticky_forum?: boolean;
     sticky_all_forum?: boolean;
 };
+
+
+
+export interface POST_REQUEST {
+    function: string;
+    data: POST;
+}

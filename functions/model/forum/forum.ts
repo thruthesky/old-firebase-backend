@@ -221,19 +221,20 @@ export class Forum {
         return this.setPostData(ref, post, old_post);
     }
 
-    async deletePost(uid: string, key: string): firebase.Promise<any> {
-        if ( this.isEmpty(uid) ) return this.error(ERROR.uid_is_empty);
-        if ( this.isEmpty(key) ) return this.error(ERROR.post_key_empty);
+    async deletePost( o ): firebase.Promise<any> {
+        
+        if ( this.isEmpty(o.uid) ) return this.error(ERROR.uid_is_empty);
+        if ( this.isEmpty(o.key) ) return this.error(ERROR.post_key_empty);
 
-        let post: POST = await this.getPostData( key );
+        let post: POST = await this.getPostData( o.key );
         
 
-        if ( uid != post.uid ) return this.error( ERROR.permission_denied );
+        if ( o.uid != post.uid ) return this.error( ERROR.permission_denied );
 
         await this.deleteCategoryPostRelation( post.key, post.categories );
-        await this.postData( key ).set( null );
+        await this.postData( o.key ).set( null );
 
-        return key;
+        return o.key;
     }
 
 
