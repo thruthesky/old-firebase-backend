@@ -14,8 +14,6 @@ export class ForumService extends Forum {
         public af: AngularFireDatabase
     ) {
         super( af.database.ref('/') );
-
-        // super( firebase.database().ref('/') );
     }
 
 
