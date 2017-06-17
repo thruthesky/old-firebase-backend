@@ -28,6 +28,8 @@ export interface POST {
 };
 
 
+export type POSTS = Array<POST>;
+
 
 export interface POST_REQUEST {
     function: string;

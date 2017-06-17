@@ -2,6 +2,9 @@ import { Injectable } from '@angular/core';
 import { AngularFireDatabase } from 'angularfire2/database';
 import * as firebase from 'firebase';
 import { Forum } from './forum';
+import { ALL_CATEGORIES } from './../../../firebase-backend.module';
+
+
 
 
 
@@ -44,5 +47,9 @@ export class ForumService extends Forum {
 
     
 
+
+    observePosts() {
+        return this.af.list( this.category(ALL_CATEGORIES) );
+    }
 
 }
