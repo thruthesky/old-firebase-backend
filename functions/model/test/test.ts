@@ -49,6 +49,7 @@ export class TestService {
 
     testPostData(): POST {
         return {
+            function: 'create',
             uid: this.testUid,
             subject: this.testSubject,
             content: this.testContent,
