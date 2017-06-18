@@ -97,14 +97,15 @@ export class UserService {
     }
 
 
-
     logout() {
         this.auth.signOut().then(()=>{
             console.log("sign out ok");
         }, () => {
             console.log("sing out error");
-        })
+        });
     }
+
+    
 
     /**
      * 

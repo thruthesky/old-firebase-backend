@@ -14,7 +14,7 @@ import { Forum } from './functions/model/forum/forum';
 export { Forum } from './functions/model/forum/forum';
 
 
-export { CATEGORY, CATEGORIES, POST, POSTS, POST_REQUEST, ALL_CATEGORIES } from './functions/model/forum/forum.interface';
+export { CATEGORY, CATEGORIES, POST, POSTS, ALL_CATEGORIES } from './functions/model/forum/forum.interface';
 
 import { UserService } from './functions/model/user/user.service';
 export { UserService } from './functions/model/user/user.service';

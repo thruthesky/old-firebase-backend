@@ -16,22 +16,29 @@ export interface CATEGORY {
 
 export type CATEGORIES = Array<CATEGORY>;
 
-export interface POST {
+
+interface REQUEST {
+    function: 'create' | 'edit';
+}
+interface UID {
+    uid: string;
+}
+interface KEY {
     key?: string;
-    uid?: string;
+}
+interface CATEGORIES {
+    categories: Array<string>;
+}
+
+interface POST_COMMON {
     subject?: string;
     content?: string;
-    categories?: Array<string>;
-    stamp?: number;
     sticky_forum?: boolean;
     sticky_all_forum?: boolean;
-};
-
-
-export type POSTS = Array<POST>;
-
-
-export interface POST_REQUEST {
-    function: string;
-    data: POST;
+    stamp?: number;
 }
+
+// export interface POST_CREATE extends REQUEST, UID, CATEGORIES, POST_COMMON {};
+// export interface POST_EDIT extends POST_CREATE, KEY {};
+export interface POST extends REQUEST, UID, KEY, CATEGORIES, POST_COMMON {};
+export type POSTS = Array<POST>;
