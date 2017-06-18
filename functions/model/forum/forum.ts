@@ -221,7 +221,7 @@ export class Forum {
         return this.setPostData(ref, post, old_post);
     }
 
-    async deletePost( o ): firebase.Promise<any> {
+    async deletePost( o: { uid: string, key: string } ): firebase.Promise<any> {
         
         if ( this.isEmpty(o.uid) ) return this.error(ERROR.uid_is_empty);
         if ( this.isEmpty(o.key) ) return this.error(ERROR.post_key_empty);

@@ -365,16 +365,16 @@ class AppTest {
     await this.forum.category( ALL_CATEGORIES ).child( key_book ).once('value').then( x => this.success(`${key_book} exists under all category`) ).catch( e => this.error(e.message));
 
     /// delete with no uid, no key
-    await this.forum.deletePost( '', '' ).catch( e => this.expect( e.message, ERROR.uid_is_empty, "deletePost() must have uid"));
-    await this.forum.deletePost( 'a', '' ).catch( e => this.expect( e.message, ERROR.post_key_empty, "deletePost() must have key"));
+    await this.forum.deletePost( { uid: '', key: '' } ).catch( e => this.expect( e.message, ERROR.uid_is_empty, "deletePost() must have uid"));
+    await this.forum.deletePost( { uid: 'a', key: '' } ).catch( e => this.expect( e.message, ERROR.post_key_empty, "deletePost() must have key"));
 
     /// delete with wrong uid
-    await this.forum.deletePost( '-key-ddd', key_book )
+    await this.forum.deletePost( { uid: '-key-wrong-key', key: key_book } )
       .then( key => this.error("deletePost() with worng uid must be failed"))
       .catch( e => this.expect( e.message, ERROR.permission_denied, "deletePost() with wrong uid properly failed with permission denied."));
 
     /// delete
-    await this.forum.deletePost( this.testUid(), key_book )
+    await this.forum.deletePost( { uid: this.testUid(), key: key_book } )
       .then( key => this.success(`deletePost( ${key} ) was sucess with ${key_book}`))
       .catch( e => this.error(`deletePost() failed: ${e.message}`));
 
