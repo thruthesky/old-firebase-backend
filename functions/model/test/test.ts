@@ -26,12 +26,10 @@ export class TestService {
 
         let data = {
             function: 'create',
-            data: {
-                categories: ['abc'],
-                uid: this.testUid,
-                subject: this.testSubject,
-                content: this.testContent
-            }
+            categories: ['abc'],
+            uid: this.testUid,
+            subject: this.testSubject,
+            content: this.testContent
         };
 
         this.api.post(data, { debug: true })
@@ -49,6 +47,7 @@ export class TestService {
 
     testPostData(): POST {
         return {
+            function: 'create',
             uid: this.testUid,
             subject: this.testSubject,
             content: this.testContent,
