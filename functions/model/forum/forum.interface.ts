@@ -18,8 +18,9 @@ export type CATEGORIES = Array<CATEGORY>;
 
 
 interface REQUEST {
-    function: 'create' | 'edit';
+    function?: string;
 }
+
 interface UID {
     uid: string;
 }
