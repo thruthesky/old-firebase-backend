@@ -477,10 +477,11 @@ export class Forum {
         // console.log("postApi() begins with: ", params);
 
         if (params === void 0) return this.error(ERROR.requeset_is_empty);
-        if (params.function === void 0) return this.error(ERROR.function_is_not_provided);
+        
         //if (params.data === void 0) return this.error(ERROR.requeset_data_is_empty);
 
-        if (params.uid === void 0) return this.error(ERROR.uid_is_empty);
+
+        if ( ! params['uid'] ) return this.error(ERROR.uid_is_empty);
         if (this.checkKey(params.uid)) return this.error(ERROR.malformed_key);
 
         // let forum = new Forum( db.ref('/') );
@@ -498,7 +499,17 @@ export class Forum {
         //     .then( c => res.send( JSON.stringify(c) ) );
 
 
-        switch (params.function) {
+
+        var func = '';
+        if ( params['function'] ) func = params['function'];
+        else {
+            if ( params['key'] ) func = 'edit';
+            else func = 'create';
+        }
+        
+
+
+        switch ( func ) {
             case 'create': return this.createPost(params);
             case 'edit': return this.editPost(params);
             case 'delete': return this.deletePost(params);

@@ -237,7 +237,7 @@ class AppTest {
     let re;
 
     /// create a post with empty data. no category will be an error.
-    let post: POST = { function: 'create', uid: '', categories: [] };
+    let post: POST = { uid: '', categories: [] };
     re = await this.forum.createPost(post)
       .catch(e => e.message);
     this.expect(re, ERROR.no_categories, `Post Create: No categories` + this.forum.lastErrorMessage);
@@ -278,7 +278,7 @@ class AppTest {
 
 
     /// post create and get
-    post = { function: 'create', uid: '', categories: ['abc'], subject: "C: " + this.testSubject() };
+    post = { uid: '', categories: ['abc'], subject: "C: " + this.testSubject() };
     let key = await this.forum.createPost(post);
     this.forum.getPostData(key)
       .then((p: POST) => {
@@ -357,8 +357,8 @@ class AppTest {
 
 
     // delete test.
-    let key_flower = await this.forum.createPost(  { function: 'create', categories: ['flower'], subject: 'I leave you a flower', uid: '-key-12345a' } );
-    let key_book = await this.forum.createPost( { function: 'create', categories: ['abc'], subject: 'I leave you a book', uid: this.testUid() } );
+    let key_flower = await this.forum.createPost(  { categories: ['flower'], subject: 'I leave you a flower', uid: '-key-12345a' } );
+    let key_book = await this.forum.createPost( { categories: ['abc'], subject: 'I leave you a book', uid: this.testUid() } );
 
     // category check
     await this.forum.category( 'abc' ).child( key_book ).once('value').then( x => this.success(`${key_book} exists under abc category`) ).catch( e => this.error(e.message));
@@ -409,7 +409,7 @@ class AppTest {
 
     console.log("\n =========================== testPostApi() =========================== ");
 
-    await this.forum.postApi({}).catch(e => this.expect(e.message, ERROR.function_is_not_provided, 'function not providing test.'));
+    // await this.forum.postApi({}).catch(e => this.expect(e.message, ERROR.function_is_not_provided, 'function not providing test.'));
 //    await this.forum.postApi({ function: 'no-function-name' }).catch(e => this.expect(e.message, ERROR.requeset_data_is_empty, 'function is give but data is not given.'));
 
     await this.forum.postApi({ function: 'no-function-name', uid: '-12345a' })
@@ -419,7 +419,6 @@ class AppTest {
 
     // create edit
     let post: POST = {
-      function: 'create',
       subject: 'post create test by api',
       content: 'This is content',
       uid: this.testUid(),
@@ -445,7 +444,6 @@ class AppTest {
       console.log("KEY ===> ", key);
 
     /// edit with no category
-    post.function = 'edit';
     post.key = key;
     post.categories = [];
     post.subject = "Subject updated...!";
@@ -512,7 +510,6 @@ class AppTest {
 
   testPostData(): POST {
     return {
-      function: 'create',
       key: '',
       uid: this.testUid(),
       subject: this.testSubject(),

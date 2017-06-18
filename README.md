@@ -37,6 +37,13 @@ firebase-backend
 * If there is a case for anonymous user could write, then just let them write but not editable and deletable.
 
 
+## Interface
+
+* POST.function is 'create' by default.
+* POST.function can be 'create', 'edit', 'delete'.
+
+
+
 ## User module
 
 User module is only used in client.
@@ -51,6 +58,7 @@ It uses angularfire2 that is not even installed on cloud function. so do not car
 * CRUD of category will be done by firebase SDK in angular.
 
 * Other works like 'like', 'dislike', 'report as spam', etc will be done in Angular with firebase SDK.
+
 
 
 
