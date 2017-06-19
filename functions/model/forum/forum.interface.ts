@@ -32,6 +32,8 @@ interface CATEGORIES {
 }
 
 interface POST_COMMON {
+    name?: string;                  /// author name
+    contact?: string;               /// author contact
     subject?: string;
     content?: string;
     sticky_forum?: boolean;

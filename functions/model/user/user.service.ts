@@ -53,12 +53,15 @@ export class UserService {
 
     }
 
+
     /**
      * GETTERS
      */
-
      get uid() {
          if ( this.isLogged ) return this.auth.currentUser.uid;
+     }
+     get name() {
+         if ( this.isLogged ) return this.auth.currentUser.displayName;
      }
 
     /// eo GETTERS
