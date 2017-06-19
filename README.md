@@ -40,9 +40,9 @@ firebase-backend
 ## Interface
 
 * POST.function is 'create' by default.
+* When you are going to create/edit a post, you don't have to give 'function' property.
+* It is determined by 'key' of the POST data. If 'key' does not exist, it's 'create'. If it has 'key' then, it is 'edit'.
 * POST.function can be 'create', 'edit', 'delete'.
-
-
 
 ## User module
 
