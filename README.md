@@ -40,16 +40,19 @@ in .firebaserc
 
 ## Update etc/service-key.ts
 
+* get service account key from google firebase conole and save it in etc/service-key.json
 
-
-## Setting project
 
 
 ## Setting Backend URL
 
+* deploy postApi and get the url and set it on api.setBackendUrl()
+
+
+
 ````
   constructor( api: ApiService ) {
-    api.setBackendUrl('');
+    api.setBackendUrl('https://xxxxxxxxxxxxxxxxxx/postApi');
   }
 ````
 
