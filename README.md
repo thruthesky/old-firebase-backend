@@ -5,13 +5,53 @@ firebase-backend
 
 # TODO
 
-* Backend gets 'uid' as user push key and trust it. but a user can send any data in 'uid' and it could lead a security problem. But it is impossible to use other's 'uid'. so it is trustable. 'uid' is more likely a password.
+Refer issues
 
 
+
+# How to work/code
+
+* If you are coding firebase-backend under another project,
+    * You should open 'firebase-backend' folder in a new 'VSCode' as a new porject.
+    * And work in that folder independently from the parent project.
 
 
 
 # Installation
+
+## Installing node modules
+
+````
+$ npm install --verbose
+````
+
+
+## Change Project ID
+
+in .firebaserc
+
+````
+{
+  "projects": {
+    "default": project-id-xxxxx"
+  }
+}
+````
+
+## Update etc/service-key.ts
+
+
+
+## Setting project
+
+
+## Setting Backend URL
+
+````
+  constructor( api: ApiService ) {
+    api.setBackendUrl('');
+  }
+````
 
 
 ## node_modules

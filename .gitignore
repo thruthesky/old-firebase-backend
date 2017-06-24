@@ -1,6 +1,7 @@
 
 *.map
 *.js
+etc/*.js
 dist/
 node_modules/
 .vscode/
