@@ -3,14 +3,14 @@ import * as admin from 'firebase-admin';
 
 import * as corsOptions from 'cors';
 
-import serviceAccount from "./etc/test-service-key";
+import serviceAccount from "./etc/service-key";
 import { Forum } from './model/forum/forum';
 
 const cors = corsOptions({ origin: true });
 
 const app = admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://test-ec3e3.firebaseio.com"
+  databaseURL: "https://" + serviceAccount.project_id + ".firebaseio.com"
 });
 const db = app.database();
 
