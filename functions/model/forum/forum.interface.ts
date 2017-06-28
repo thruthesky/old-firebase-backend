@@ -19,6 +19,7 @@ export type CATEGORIES = Array<CATEGORY>;
 
 interface REQUEST {
     function?: string;
+    secret: string;
 }
 
 interface UID {
@@ -39,6 +40,9 @@ interface POST_COMMON {
     sticky_forum?: boolean;
     sticky_all_forum?: boolean;
     stamp?: number;
+
+
+    date?: string;                   /// this is not exist in database.
 }
 
 // export interface POST_CREATE extends REQUEST, UID, CATEGORIES, POST_COMMON {};

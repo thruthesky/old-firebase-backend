@@ -24,6 +24,8 @@ export const ERROR = {
     requeset_is_empty: 'requeset_is_empty',
     requeset_data_is_empty: 'requeset_data_is_empty',
     uid_is_empty: 'uid_is_empty',
+    secret_is_empty: 'secret_is_empty',
+    secret_does_not_match: 'secret_does_not_match',
     post_not_found_by_that_key: 'post_not_found_by_that_key',
     timeout: 'timeout',
     json_parse: 'json_parse',

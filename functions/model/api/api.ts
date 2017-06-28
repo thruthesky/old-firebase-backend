@@ -7,6 +7,8 @@ import 'rxjs/add/operator/timeout';
 import 'rxjs/add/operator/map';
 
 import { ERROR } from '../error/error';
+import { POST } from './../../../firebase-backend.module';
+
 
 
 export const BACKEND_API_CONNECTION_TIMEOUT = 45000; // request time out
@@ -49,15 +51,16 @@ export class ApiService {
      *
      */
 
-    post( data: any, option = {} ) : Observable<Response> {
+    post( data: POST, option = {} ) : Observable<Response> {
 
-        data = this.buildQuery( data );
+        let q = this.buildQuery( data );
 
-        let url = this.getBackendUrl() + '?' + data;
+        let url = this.getBackendUrl() + '?' + q;
         
         if ( option['debug'] ) console.log("post: ", url); // debug in console
 
-        let o = this.http.post( this.getBackendUrl(), data, this.requestOptions )
+        let o = this.http.post( this.getBackendUrl(), q, this.requestOptions );
+
         return this.processQuery( o, option );
     }
 
@@ -86,7 +89,7 @@ export class ApiService {
     }
 
     /**
-     * return true if the obj is error ( or error response )
+     * Returns true if the obj is error ( or error response ) of backend. NOT the error of 3rd party library.
      *
      * 
      *
@@ -113,6 +116,12 @@ export class ApiService {
         if ( obj === void 0 || obj['code'] === void 0 || !obj['code'] ) return false;
         return true;
     }
+
+    /**
+     * @warning use this method only when you want to display error message to user/browser.
+     * @note Do not use this method to pass error data to another methhod.
+     * @param error 
+     */
     getErrorString( error ) {
       if ( error['code'] ) return `error code: ${error['code']}, error message: ${error['message']}`;
       else return error;
@@ -142,20 +151,20 @@ export class ApiService {
                     //console.log(e['_body']);
                 }
                 let re = e.json();
-                if ( this.isError( re ) ) throw re;
-                else return re;
+                if ( this.isError( re ) ) throw re; // if the result data is an error data of backend api.
+                else return re; // or return data.
              } )
             .catch( err => {
                 //console.log('Api::processQuery(): caught an error: ', err);
-                if ( err instanceof SyntaxError ) {
+                if ( err instanceof SyntaxError ) { // syntax error like JSON.parse() error.
                     //console.error(err); // debug
                     return Observable.throw( this.errorResponse( ERROR.json_parse, "Error on parsing the response from server.")  ); // JSON 에러
                 }
-                else if ( this.isError( err ) ) return Observable.throw( this.getErrorString( err ) ); // 프로그램 적 에러
+                else if ( this.isError( err ) ) return Observable.throw( this.getErrorString( err ) ); // backend api error. 프로그램 적 에러
                 else if ( err['_body'] && err['_body']['total'] == 0 && err['_body']['type'] == 'error' ) {
-                    return Observable.throw( this.errorResponse( ERROR.disconnected, "Failed to connect to backend sever" ) );
+                    return Observable.throw( new Error( ERROR.disconnected ) );
                 }
-                else return Observable.throw( this.getErrorString(err) ); // 그외의 알 수 없는 에러
+                else return Observable.throw( err ); // 그외의 알 수 없는 에러
             } );
     }
 

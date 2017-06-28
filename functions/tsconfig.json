@@ -10,7 +10,9 @@
         "declaration": false,
         "noImplicitAny": false,
         "removeComments": true,
-        "noLib": false
+        "noLib": false,
+         "emitDecoratorMetadata": true,
+    "experimentalDecorators": true
     },
     "files": [
         "node_modules/typescript/lib/lib.es6.d.ts",

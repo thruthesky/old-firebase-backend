@@ -1,5 +1,5 @@
 import * as admin from "firebase-admin";
-import serviceAccount from "./etc/test-service-key";
+import serviceAccount from "./etc/service-key";
 // Admin Key 초기화. 중요. 앱에서 한번만 초기화 해야 한다.
 const app = admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -237,7 +237,7 @@ class AppTest {
     let re;
 
     /// create a post with empty data. no category will be an error.
-    let post: POST = { uid: '', categories: [] };
+    let post: POST = { uid: '', categories: [], secret: '' };
     re = await this.forum.createPost(post)
       .catch(e => e.message);
     this.expect(re, ERROR.no_categories, `Post Create: No categories` + this.forum.lastErrorMessage);
@@ -278,7 +278,7 @@ class AppTest {
 
 
     /// post create and get
-    post = { uid: '', categories: ['abc'], subject: "C: " + this.testSubject() };
+    post = { uid: '', categories: ['abc'], subject: "C: " + this.testSubject(), secret: '' };
     let key = await this.forum.createPost(post);
     this.forum.getPostData(key)
       .then((p: POST) => {
@@ -357,8 +357,8 @@ class AppTest {
 
 
     // delete test.
-    let key_flower = await this.forum.createPost(  { categories: ['flower'], subject: 'I leave you a flower', uid: '-key-12345a' } );
-    let key_book = await this.forum.createPost( { categories: ['abc'], subject: 'I leave you a book', uid: this.testUid() } );
+    let key_flower = await this.forum.createPost(  { categories: ['flower'], subject: 'I leave you a flower', uid: '-key-12345a', secret: '' } );
+    let key_book = await this.forum.createPost( { categories: ['abc'], subject: 'I leave you a book', uid: this.testUid(), secret: '' } );
 
     // category check
     await this.forum.category( 'abc' ).child( key_book ).once('value').then( x => this.success(`${key_book} exists under abc category`) ).catch( e => this.error(e.message));
@@ -422,7 +422,8 @@ class AppTest {
       subject: 'post create test by api',
       content: 'This is content',
       uid: this.testUid(),
-      categories: []
+      categories: [],
+      secret: ''
     };
 
     await this.forum.postApi(post)
@@ -514,7 +515,8 @@ class AppTest {
       uid: this.testUid(),
       subject: this.testSubject(),
       content: this.testContent(),
-      categories: this.testCategories()
+      categories: this.testCategories(),
+      secret: ''
     };
   }
 

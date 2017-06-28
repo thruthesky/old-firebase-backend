@@ -1,19 +1,20 @@
 import * as firebase from 'firebase/app';
 import { ERROR } from '../error/error';
 
-
-
 import {
     CATEGORY_PATH, CATEGORY, CATEGORIES, POST,
     POST_DATA_PATH, CATEGORY_POST_RELATION_PATH, ALL_CATEGORIES
 } from './forum.interface';
 
 
+import { SECRET_KEY_PATH } from './../../define';
 
 export class Forum {
     debugPath: string = ''; // debug path.
     lastErrorMessage: string = '';
-    constructor(public root: firebase.database.Reference) {
+    constructor(
+        private root: firebase.database.Reference
+    ) {
 
     }
 
@@ -203,7 +204,7 @@ export class Forum {
     }
     async createPost(post: POST): firebase.Promise<any> {
         if (this.checkPost(post)) return this.error(this.checkPost(post));
-        if ( post.key ) return this.error( ERROR.post_key_exists_on_create );
+        if (post.key) return this.error(ERROR.post_key_exists_on_create);
         await this.categoriesExist(post.categories);
         let ref = this.postData().push();
         return this.setPostData(ref, post);
@@ -211,28 +212,28 @@ export class Forum {
 
     async editPost(post: POST): firebase.Promise<any> {
         if (this.checkPost(post)) return this.error(this.checkPost(post));
-        if ( ! post.key ) return this.error( ERROR.post_key_empty );
+        if (!post.key) return this.error(ERROR.post_key_empty);
         await this.categoriesExist(post.categories);
         let old_post = await this.getPostData(post.key);
 
-        if ( post.uid != old_post.uid ) return this.error( ERROR.permission_denied );
-    
+        if (post.uid != old_post.uid) return this.error(ERROR.permission_denied);
+
         let ref = this.postData(post.key);
         return this.setPostData(ref, post, old_post);
     }
 
-    async deletePost( o: { uid: string, key: string } ): firebase.Promise<any> {
-        
-        if ( this.isEmpty(o.uid) ) return this.error(ERROR.uid_is_empty);
-        if ( this.isEmpty(o.key) ) return this.error(ERROR.post_key_empty);
+    async deletePost(o: { uid: string, key: string }): firebase.Promise<any> {
 
-        let post: POST = await this.getPostData( o.key );
-        
+        if (this.isEmpty(o.uid)) return this.error(ERROR.uid_is_empty);
+        if (this.isEmpty(o.key)) return this.error(ERROR.post_key_empty);
 
-        if ( o.uid != post.uid ) return this.error( ERROR.permission_denied );
+        let post: POST = await this.getPostData(o.key);
 
-        await this.deleteCategoryPostRelation( post.key, post.categories );
-        await this.postData( o.key ).set( null );
+
+        if (o.uid != post.uid) return this.error(ERROR.permission_denied);
+
+        await this.deleteCategoryPostRelation(post.key, post.categories);
+        await this.postData(o.key).set(null);
 
         return o.key;
     }
@@ -251,7 +252,7 @@ export class Forum {
      * @return on success, a promise with post key.
      *      otherwise, .catch() will be invoked.
      */
-    setPostData(ref: firebase.database.Reference, post: POST, old_post?: POST ): firebase.Promise<any> {
+    setPostData(ref: firebase.database.Reference, post: POST, old_post?: POST): firebase.Promise<any> {
         post.key = ref.key;
         // console.log('ref: ', ref.toString());
         post.stamp = Math.round((new Date()).getTime() / 1000);
@@ -348,20 +349,17 @@ export class Forum {
      * @param key - is the post push key.
      * @param post 
      */
-    async setCategoryPostRelation(key: string, new_post: POST, old_post?: POST ) {
+    async setCategoryPostRelation(key: string, new_post: POST, old_post?: POST) {
 
+        if (!new_post || !new_post.categories || !new_post.categories.length) return;
 
-
-
-        if ( !new_post || !new_post.categories || !new_post.categories.length ) return;
-        
         // delete old categories.
         // if ( old_post && old_post.categories && old_post.categories.length  ) {
         //     for (let category of old_post.categories) {
         //         await this.categoryPostRelation.child( category ).child(old_post.key).set( null );
         //     }
         // }
-        if ( old_post ) await this.deleteCategoryPostRelation( old_post.key, old_post.categories );
+        if (old_post) await this.deleteCategoryPostRelation(old_post.key, old_post.categories);
 
 
         for (let category of new_post.categories) {
@@ -381,12 +379,12 @@ export class Forum {
      * @param key 
      * @param categories 
      */
-    async deleteCategoryPostRelation( key, categories ) {
-        if ( categories && categories.length  ) {
+    async deleteCategoryPostRelation(key, categories) {
+        if (categories && categories.length) {
             for (let category of categories) {
-                await this.categoryPostRelation.child( category ).child(key).set( null );
+                await this.categoryPostRelation.child(category).child(key).set(null);
             }
-            await this.categoryPostRelation.child(ALL_CATEGORIES).child(key).set( null );
+            await this.categoryPostRelation.child(ALL_CATEGORIES).child(key).set(null);
         }
     }
 
@@ -465,6 +463,18 @@ export class Forum {
     }
 
 
+
+
+    sanitizePost(post: POST): POST {
+
+        let d = new Date(post.stamp * 1000);
+
+        post.date = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate();
+
+        return post;
+    }
+
+
     ////////////////////////////////////
     ////
     ////    POST API
@@ -476,26 +486,51 @@ export class Forum {
 
         if (params === void 0) return this.error(ERROR.requeset_is_empty);
 
-        if ( ! params['uid'] ) return this.error(ERROR.uid_is_empty);
+        if (!params['uid']) return this.error(ERROR.uid_is_empty);
         if (this.checkKey(params.uid)) return this.error(ERROR.malformed_key);
 
-        var func = '';
-        if ( params['function'] ) func = params['function'];
-        else {
-            if ( params['key'] ) func = 'edit';
-            else func = 'create';
-        }
-        
+
+        if (!params['secret']) return this.error(ERROR.secret_is_empty);
 
 
-        switch ( func ) {
-            case 'create': return this.createPost(params);
-            case 'edit': return this.editPost(params);
-            case 'delete': return this.deletePost(params);
-            default: return this.error(ERROR.unknown_function);
-        }
+        this.getSecretKey(params.uid).then(key => {
+            if (key === params['secret']) {
 
+                ////
+                var func = '';
+                if (params['function']) func = params['function'];
+                else {
+                    if (params['key']) func = 'edit';
+                    else func = 'create';
+                }
+                switch (func) {
+                    case 'create': return this.createPost(params);
+                    case 'edit': return this.editPost(params);
+                    case 'delete': return this.deletePost(params);
+                    default: return this.error(ERROR.unknown_function);
+                }
+                ////
+                
+            }
+            else return this.error(ERROR.secret_does_not_match);
+        });
 
+    }
+
+    /**
+     * @todo This method should be in other service since it is not depending on forum.
+     * 
+     * Returns a promise of a secret key.
+     * @param uid User uid.
+     */
+    getSecretKey(uid: string): firebase.Promise<any> {
+        return this.root.ref.child(SECRET_KEY_PATH).child(uid).once('value')
+            .then(snap => {
+                let v = snap.val();
+                if (v) return v;
+                else return null;
+            })
+            .catch(e => console.error(e));
     }
 
 
