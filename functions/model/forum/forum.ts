@@ -149,7 +149,10 @@ export class Forum {
      * 
      * @code
     
-    
+        this.forum.getCategories()
+            .then( categories => this.categories = categories )
+            .catch( e => console.error(e) );
+            
      * @endcode
      * 
      */

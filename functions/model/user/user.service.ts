@@ -10,7 +10,8 @@ import 'rxjs/add/observable/throw';
 
 import { SECRET_KEY_PATH, PROFILE_PATH, PROFILE_KEY } from './../../define';
 
-// import { Library } from './../../library';
+
+import { Library } from './../../library';
 
 
 // export interface USER_REGISTER {
@@ -33,14 +34,13 @@ export interface SOCIAL_PROFILE {
     photoURL: string;
 }
 
-
-
 @Injectable()
 export class UserService {
     auth: firebase.auth.Auth;
     private _isAdmin: boolean = false;
     root: firebase.database.Reference;
     secretKey: string;
+    lib: Library;
     constructor(
         private angularFireAuth: AngularFireAuth,
         private angularFireDatabase: AngularFireDatabase
@@ -48,6 +48,8 @@ export class UserService {
 
         this.root = angularFireDatabase.database.ref('/');
         this.auth = angularFireAuth.auth;
+
+        this.lib = new Library( this.root );
 
 
         /**
@@ -57,10 +59,12 @@ export class UserService {
             console.log("UserService::onAuthStateChanged()");
             if (user) {
                 console.log("User logged in");
-                this.getOrGenerateSecretKey(key => {
-                    console.log("Got Secret Key: ", key);
-                    this.secretKey = key;
-                });
+                this.getOrGenerateSecretKey()
+                    .then(key => {
+                        console.log("Got Secret Key: ", key);
+                        this.secretKey = key;
+                    })
+                    .catch( e => console.error(e));
                 this.loadProfile();
             }
             else {
@@ -89,9 +93,9 @@ export class UserService {
     get name() {
         if (this.isLogged) {
             let profile = this.getProfile();
-            if ( ! profile['name'] ) return null; // if not exists.
+            if (!profile['name']) return null; // if not exists.
             let name = profile['name'];
-            if ( ! name ) return null; // exists but if 'undefined' or empty.
+            if (!name) return null; // exists but if 'undefined' or empty.
             else return name;
         }
         return null;
@@ -99,19 +103,19 @@ export class UserService {
 
     loadProfile() {
         return this.root.child(PROFILE_PATH).child(this.uid).once('value')
-            .then( snap => {
+            .then(snap => {
                 let profile = snap.val();
-                if ( profile ) localStorage.setItem( PROFILE_KEY, JSON.stringify( profile ) );
+                if (profile) localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
                 else '';
             })
-            .catch( e => console.error( e ) );
+            .catch(e => console.error(e));
     }
 
     getProfile() {
-        let re = localStorage.getItem( PROFILE_KEY );
-        if ( re ) {
+        let re = localStorage.getItem(PROFILE_KEY);
+        if (re) {
             try {
-                let profile = JSON.parse( re );
+                let profile = JSON.parse(re);
                 return profile;
             }
             catch (e) {
@@ -205,8 +209,8 @@ export class UserService {
      * After login, the user would get or generate secret key.
      * @note if there is no secret key, then create one.
      */
-    getOrGenerateSecretKey(callback) {
-
+    getOrGenerateSecretKey() : firebase.Promise<any> {
+        return this.lib.generateSecretKey( this.uid );
     }
 
 

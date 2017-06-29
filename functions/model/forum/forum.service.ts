@@ -27,11 +27,11 @@ export class ForumService extends Forum {
      * Use this to live-update.
      * 
      * @code
-     
-                this.category.observe().subscribe( res => {
-                    console.log(res);
-                    this.categories = res;
-                });
+
+        this.forum.observeCategory().subscribe(res => {
+            console.log(res);
+            this.categories = res;
+        });
 
      * @endcode
      */
@@ -48,6 +48,9 @@ export class ForumService extends Forum {
     
 
 
+    /**
+     * 
+     */
     observePosts() {
         return this.af.list( this.category(ALL_CATEGORIES) );
     }

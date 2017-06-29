@@ -51,7 +51,8 @@ export class TestService {
             uid: this.testUid,
             subject: this.testSubject,
             content: this.testContent,
-            categories: this.testCategories
+            categories: this.testCategories,
+            secret: ''
         };
     }
 
