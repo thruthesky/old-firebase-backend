@@ -3,7 +3,6 @@
         "node_modules"
     ],
     "compilerOptions": {
-        
         "target": "es5",
         "watch": true,
         "sourceMap": true,
@@ -11,8 +10,8 @@
         "noImplicitAny": false,
         "removeComments": true,
         "noLib": false,
-         "emitDecoratorMetadata": true,
-    "experimentalDecorators": true
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true
     },
     "files": [
         "node_modules/typescript/lib/lib.es6.d.ts",

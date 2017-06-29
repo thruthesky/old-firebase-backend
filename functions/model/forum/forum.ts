@@ -6,16 +6,21 @@ import {
     POST_DATA_PATH, CATEGORY_POST_RELATION_PATH, ALL_CATEGORIES
 } from './forum.interface';
 
+import { Library } from './../../library';
 
-import { SECRET_KEY_PATH } from './../../define';
 
+
+/**
+ * This is not a service. You cannot inject.
+ */
 export class Forum {
+    lib: Library;
     debugPath: string = ''; // debug path.
     lastErrorMessage: string = '';
     constructor(
         private root: firebase.database.Reference
     ) {
-
+        this.lib = new Library(root);
     }
 
     get getLastErrorMessage(): string {
@@ -213,6 +218,9 @@ export class Forum {
     async editPost(post: POST): firebase.Promise<any> {
         if (this.checkPost(post)) return this.error(this.checkPost(post));
         if (!post.key) return this.error(ERROR.post_key_empty);
+
+        await this.getPostData(post.key);
+
         await this.categoriesExist(post.categories);
         let old_post = await this.getPostData(post.key);
 
@@ -482,6 +490,10 @@ export class Forum {
     ////////////////////////////////////
 
 
+    /**
+     * 
+     * @param params User input. `function`, `uid`, `secret` are required.
+     */
     postApi(params): firebase.Promise<any> {
 
         if (params === void 0) return this.error(ERROR.requeset_is_empty);
@@ -489,48 +501,30 @@ export class Forum {
         if (!params['uid']) return this.error(ERROR.uid_is_empty);
         if (this.checkKey(params.uid)) return this.error(ERROR.malformed_key);
 
-
         if (!params['secret']) return this.error(ERROR.secret_is_empty);
 
-
-        this.getSecretKey(params.uid).then(key => {
+        return this.lib.getSecretKey(params.uid).then(key => {          /// secret key check for security.
             if (key === params['secret']) {
-
-                ////
-                var func = '';
-                if (params['function']) func = params['function'];
-                else {
-                    if (params['key']) func = 'edit';
-                    else func = 'create';
-                }
-                switch (func) {
+                switch (this.functionName(params)) {
                     case 'create': return this.createPost(params);
                     case 'edit': return this.editPost(params);
                     case 'delete': return this.deletePost(params);
                     default: return this.error(ERROR.unknown_function);
                 }
-                ////
-                
             }
             else return this.error(ERROR.secret_does_not_match);
         });
 
     }
 
-    /**
-     * @todo This method should be in other service since it is not depending on forum.
-     * 
-     * Returns a promise of a secret key.
-     * @param uid User uid.
-     */
-    getSecretKey(uid: string): firebase.Promise<any> {
-        return this.root.ref.child(SECRET_KEY_PATH).child(uid).once('value')
-            .then(snap => {
-                let v = snap.val();
-                if (v) return v;
-                else return null;
-            })
-            .catch(e => console.error(e));
+    functionName(params) {
+        let func = '';
+        if (params['function']) func = params['function'];
+        else {
+            if (params['key']) func = 'edit';
+            else func = 'create';
+        }
+        return func;
     }
 
 

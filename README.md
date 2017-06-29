@@ -145,3 +145,6 @@ Secret key is very important key and only readable by the owned-user.
       }
     }
 ````
+
+
+* if wrong `uid` or wrong `secret` passed, `secret_does_not_match` error will be thrown.

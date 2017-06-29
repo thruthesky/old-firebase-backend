@@ -3,9 +3,10 @@ import serviceAccount from "./etc/service-key";
 // Admin Key 초기화. 중요. 앱에서 한번만 초기화 해야 한다.
 const app = admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://test-ec3e3.firebaseio.com"
+  databaseURL: "https://sonub-e2b13.firebaseio.com"
 });
 const db = app.database();
+
 
 //import { Post, POST } from './model/post';
 
@@ -13,7 +14,7 @@ import { Forum } from './model/forum/forum';
 import { POST, CATEGORY, ALL_CATEGORIES } from './model/forum/forum.interface';
 import { ERROR, isError } from './model/error/error';
 import * as chalk from 'chalk';
-
+import { Library } from './library';
 interface POST_REQUEST { function: string, data: POST };
 
 
@@ -27,16 +28,29 @@ function datetime() {
  * 
  */
 class AppTest {
-
   root;
+  lib: Library;
   forum: Forum;
   errorCount: number = 0;
   unexpectedCount: number = 0;
   successCount: number = 0;
+
+
+  userA = {
+    uid: '-push-key-for-user-a',
+    name: 'UserA',
+    secret: ''
+  };
+
   constructor() {
     this.root = db.ref('/');
+    this.lib = new Library(this.root);
     this.forum = new Forum(this.root);
-    // this.forum.debugPath = 'a/';
+
+
+
+
+
     this.run();
   }
 
@@ -46,7 +60,8 @@ class AppTest {
 
     let re;
 
-    await this.testCategoryIDFormat();
+    await this.testIDFormat();
+    await this.testMethods();
     await this.testCategory();
     await this.testPost();
     await this.testPostApi();
@@ -57,7 +72,7 @@ class AppTest {
 
   }
 
-  async testCategoryIDFormat() {
+  async testIDFormat() {
 
     let re;
     re = await this.forum.createCategory({ id: 'abc#def', name: 'is error' }).catch(e => e.message);
@@ -82,6 +97,35 @@ class AppTest {
 
   }
 
+  async testMethods() {
+    console.log("\n =========================== testMethods() =========================== ")
+
+    let re = this.forum.functionName({ function: '' });
+    this.expect(re, 'create', `functions name is empty`);
+
+    re = this.forum.functionName({ function: 'edit' });
+    this.expect(re, 'edit', `functions name is empty`);
+
+    re = this.forum.functionName({ function: 'delete' });
+    this.expect(re, 'delete', `functions name is empty`);
+
+
+    re = this.forum.functionName({ function: 'wrong' });
+    this.expect(re, 'wrong', `functions name is empty`);
+
+
+
+
+    await this.lib.generateSecretKey(this.userA.uid)
+      .then(key => this.success(`key: ${key} generated for ${this.userA.name}`))
+      .catch(e => {
+        console.log("ERROR", e);
+        this.error(`generateSecretKey failed`);
+      })
+
+
+
+  }
   async testCategory() {
 
     console.log("\n =========================== testCategory() =========================== ")
@@ -252,7 +296,7 @@ class AppTest {
 
     /// post create with a key should be failed. when you crate a post, there must be no key.
     post.key = '-key-13245abc';
-    await this.forum.createPost( post ).catch( e => this.expect( e.message, ERROR.post_key_exists_on_create, 'Post create with key properly failed.' ));
+    await this.forum.createPost(post).catch(e => this.expect(e.message, ERROR.post_key_exists_on_create, 'Post create with key properly failed.'));
     post.key = '';
 
 
@@ -357,33 +401,33 @@ class AppTest {
 
 
     // delete test.
-    let key_flower = await this.forum.createPost(  { categories: ['flower'], subject: 'I leave you a flower', uid: '-key-12345a', secret: '' } );
-    let key_book = await this.forum.createPost( { categories: ['abc'], subject: 'I leave you a book', uid: this.testUid(), secret: '' } );
+    let key_flower = await this.forum.createPost({ categories: ['flower'], subject: 'I leave you a flower', uid: '-key-12345a', secret: '' });
+    let key_book = await this.forum.createPost({ categories: ['abc'], subject: 'I leave you a book', uid: this.testUid(), secret: '' });
 
     // category check
-    await this.forum.category( 'abc' ).child( key_book ).once('value').then( x => this.success(`${key_book} exists under abc category`) ).catch( e => this.error(e.message));
-    await this.forum.category( ALL_CATEGORIES ).child( key_book ).once('value').then( x => this.success(`${key_book} exists under all category`) ).catch( e => this.error(e.message));
+    await this.forum.category('abc').child(key_book).once('value').then(x => this.success(`${key_book} exists under abc category`)).catch(e => this.error(e.message));
+    await this.forum.category(ALL_CATEGORIES).child(key_book).once('value').then(x => this.success(`${key_book} exists under all category`)).catch(e => this.error(e.message));
 
     /// delete with no uid, no key
-    await this.forum.deletePost( { uid: '', key: '' } ).catch( e => this.expect( e.message, ERROR.uid_is_empty, "deletePost() must have uid"));
-    await this.forum.deletePost( { uid: 'a', key: '' } ).catch( e => this.expect( e.message, ERROR.post_key_empty, "deletePost() must have key"));
+    await this.forum.deletePost({ uid: '', key: '' }).catch(e => this.expect(e.message, ERROR.uid_is_empty, "deletePost() must have uid"));
+    await this.forum.deletePost({ uid: 'a', key: '' }).catch(e => this.expect(e.message, ERROR.post_key_empty, "deletePost() must have key"));
 
     /// delete with wrong uid
-    await this.forum.deletePost( { uid: '-key-wrong-key', key: key_book } )
-      .then( key => this.error("deletePost() with worng uid must be failed"))
-      .catch( e => this.expect( e.message, ERROR.permission_denied, "deletePost() with wrong uid properly failed with permission denied."));
+    await this.forum.deletePost({ uid: '-key-wrong-key', key: key_book })
+      .then(key => this.error("deletePost() with worng uid must be failed"))
+      .catch(e => this.expect(e.message, ERROR.permission_denied, "deletePost() with wrong uid properly failed with permission denied."));
 
     /// delete
-    await this.forum.deletePost( { uid: this.testUid(), key: key_book } )
-      .then( key => this.success(`deletePost( ${key} ) was sucess with ${key_book}`))
-      .catch( e => this.error(`deletePost() failed: ${e.message}`));
+    await this.forum.deletePost({ uid: this.testUid(), key: key_book })
+      .then(key => this.success(`deletePost( ${key} ) was sucess with ${key_book}`))
+      .catch(e => this.error(`deletePost() failed: ${e.message}`));
 
     // category check after delete
-    await this.forum.category( 'abc' ).child( key_book ).once('value').then( s => this.expect(s.val(), null, `${key_book} does not exist under abc category`) ).catch( e => this.error(e.message));
-    await this.forum.category( ALL_CATEGORIES ).child( key_book ).once('value').then( s => this.expect(s.val(), null, `${key_book} does not exist under all category`) ).catch( e => this.error(e.message));
+    await this.forum.category('abc').child(key_book).once('value').then(s => this.expect(s.val(), null, `${key_book} does not exist under abc category`)).catch(e => this.error(e.message));
+    await this.forum.category(ALL_CATEGORIES).child(key_book).once('value').then(s => this.expect(s.val(), null, `${key_book} does not exist under all category`)).catch(e => this.error(e.message));
 
 
-    
+
 
 
 
@@ -410,9 +454,25 @@ class AppTest {
     console.log("\n =========================== testPostApi() =========================== ");
 
     // await this.forum.postApi({}).catch(e => this.expect(e.message, ERROR.function_is_not_provided, 'function not providing test.'));
-//    await this.forum.postApi({ function: 'no-function-name' }).catch(e => this.expect(e.message, ERROR.requeset_data_is_empty, 'function is give but data is not given.'));
+    //    await this.forum.postApi({ function: 'no-function-name' }).catch(e => this.expect(e.message, ERROR.requeset_data_is_empty, 'function is give but data is not given.'));
 
-    await this.forum.postApi({ function: 'no-function-name', uid: '-12345a' })
+
+    this.userA.secret = await this.lib.getSecretKey(this.userA.uid)
+      .then(key => {
+        this.success(`Got key: `);
+        return key;
+      })
+      .catch(e => {
+        console.log(e);
+        this.error("Failed to get secret key")
+      })
+
+
+    await this.forum.postApi({
+      function: 'no-function-name',
+      uid: this.userA.uid,
+      secret: this.userA.secret
+    })
       .catch(e => this.expect(e.message, ERROR.unknown_function, 'Wrong function name test'));
 
 
@@ -421,28 +481,40 @@ class AppTest {
     let post: POST = {
       subject: 'post create test by api',
       content: 'This is content',
-      uid: this.testUid(),
       categories: [],
-      secret: ''
+      uid: this.userA.uid,
+      secret: this.userA.secret
     };
 
+    // expect error.
     await this.forum.postApi(post)
       .then(() => this.error("Calling postApi with no category must be failed."))
       .catch(e => this.expect(e.message, ERROR.no_categories, 'postApi() for creating a post with no category properly failed'));
 
 
+    // expect error.
     post['categories'] = ['wrong-category'];
     await this.forum.postApi(post)
       .then(() => this.error("Calling postApi with wrong category must be failed."))
       .catch(e => this.expect(e.message, ERROR.category_not_exist, 'postApi() for creating a post with wrong category properly failed'));
 
+    // expect error: wrong uid
+    post.secret = "-a-wrong-secret-key";
+    await this.forum.postApi(post)
+      .then(() => this.error("Calling postApi with wrong secret must be failed."))
+      .catch(e => this.expect(e.message, ERROR.secret_does_not_match, `'secert does match' properly failed`));
+
+
+    post.secret = this.userA.secret;
+
+    // expect success.
     post['categories'] = ['abc', 'flower'];
     let key = await this.forum.postApi(post)
       .then(key => { this.success("Post create with postApi(function:create) success . key: " + key); return key; })
       .catch(e => this.error("A post should be created."));
 
 
-      console.log("KEY ===> ", key);
+    // console.log("KEY ===> ", key);
 
     /// edit with no category
     post.key = key;
@@ -460,16 +532,17 @@ class AppTest {
       .then(() => this.error("Calling postApi with empty category must be failed."))
       .catch(e => this.expect(e.message, ERROR.category_not_exist, 'postApi() for editing a post with wrong category properly failed'));
 
-    /// edit and check
+    /// edit subject/content/category and check
     post.categories = ['abc'];
     await this.forum.postApi(post)
       .then(key => {
         this.success("Post edit success with: " + key);
-        this.forum.getPostData( key ).then((p:POST) => {
+        this.forum.getPostData(key).then((p: POST) => {
 
-          this.expect( p.key, post.key, "postApi(function:edit) key match");
-          this.expect( p.subject, post.subject, "Subject edit with postApi(function:eidt) success.");
-          this.expect( p.content, post.content, "Content edit with postApi(function:eidt) success.");
+          this.expect(p.key, post.key, "postApi(function:edit) key match");
+          this.expect(p.subject, post.subject, "Subject edit with postApi(function:eidt) success.");
+          this.expect(p.content, post.content, "Content edit with postApi(function:eidt) success.");
+
 
           this.forum.categoryPostRelation.child('flower').child(p.key).once('value')
             .then(s => this.expect(s.val(), null, "Post does not exist under flower category !!"));
@@ -481,27 +554,41 @@ class AppTest {
       .catch(e => this.error("Edit should be success."));
 
 
+    /// edit with wrong post key. expect error
+    let newData = Object.assign({}, post);
+    newData.key = '-wrong-post-key';
+    await this.forum.postApi(newData)
+      .then(() => this.error("Calling postApi with wrong post key must be failed."))
+      .catch(e => this.expect(e.message, ERROR.post_not_found_by_that_key, `'edit' properly failed`));
 
 
 
 
 
-    ///
-
-    /// edit with wrong post key
-
-
-
-    /// edit with worng category
-    /// edit categoriy
-    /// edit subject
-    /// edit content
     /// delete post
+    newData.function = 'delete';
+    newData.key = '-wrong-post-key';
+    await this.forum.postApi(newData)
+      .then(() => this.error("Calling postApi for delete with wrong post key must be failed."))
+      .catch(e => this.expect(e.message, ERROR.post_not_found_by_that_key, `'delete' properly failed`));
+
+    newData.key = post.key;
+    newData.uid = '-wrong-uid';
+
+    await this.forum.postApi(newData)
+      .then(() => this.error("Calling postApi for delete with wrong post key must be failed."))
+      .catch(e => this.expect(e.message, ERROR.secret_does_not_match, `'delete' of 'wrong-user' properly failed`));
 
 
+    newData.uid = post.uid;
 
+    await this.forum.postApi(newData)
+      .then(() => this.success(`delete success`))
+      .catch(e => this.error(`'delete' failed`));
 
-
+    await this.forum.getPostData( post.key )
+      .then(() => this.error('post was not deleted'))
+      .catch( e => this.expect( e.message, ERROR.post_not_found_by_that_key, 'post poroperly deleted'))
 
   }
 

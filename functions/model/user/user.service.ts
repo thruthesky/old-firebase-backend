@@ -10,7 +10,7 @@ import 'rxjs/add/observable/throw';
 
 import { SECRET_KEY_PATH, PROFILE_PATH, PROFILE_KEY } from './../../define';
 
-import { randomString } from './../../library';
+// import { Library } from './../../library';
 
 
 // export interface USER_REGISTER {
@@ -44,11 +44,11 @@ export class UserService {
     constructor(
         private angularFireAuth: AngularFireAuth,
         private angularFireDatabase: AngularFireDatabase
-
     ) {
 
         this.root = angularFireDatabase.database.ref('/');
         this.auth = angularFireAuth.auth;
+
 
         /**
          * For admin check.
@@ -206,22 +206,7 @@ export class UserService {
      * @note if there is no secret key, then create one.
      */
     getOrGenerateSecretKey(callback) {
-        console.log("getSecretKey()");
-        let key = this.root.child('user').child('secret').child(this.key);
-        key.once('value')
-            .then(snap => {
-                if (snap.val()) {
-                    console.log("Got secret key: ", snap.val());
-                    callback(snap.val())
-                }
-                else {
-                    let unique = randomString(this.uid);
-                    console.log("secret key does not exists. generate: ", unique);
-                    key.set(unique);
-                    callback(unique);
-                }
-            })
-            .catch(e => console.error(e));
+
     }
 
 
