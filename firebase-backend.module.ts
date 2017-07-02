@@ -14,6 +14,8 @@ import { Forum } from './functions/model/forum/forum';
 export { Forum } from './functions/model/forum/forum';
 
 
+export { ERROR, isError } from './functions/model/error/error';
+
 
 export { CATEGORY, CATEGORIES, POST, POSTS, ALL_CATEGORIES } from './functions/model/forum/forum.interface';
 

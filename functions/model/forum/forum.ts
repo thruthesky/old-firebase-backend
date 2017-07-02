@@ -107,7 +107,7 @@ export class Forum {
 
         if (this.isEmpty(data.id)) return this.error(ERROR.category_id_empty);
 
-        data = this.undefinedToNull(data);
+        data = this.lib.trimObject(data);
 
 
         // console.log("edit Category data: ", data);
@@ -417,25 +417,6 @@ export class Forum {
 
     }
 
-
-    /**
-     * 
-     * Turns undefined into null to avoid "first argument contains undefined in property firebase" error.
-     * 
-     * @param obj 
-     * 
-     * @code
-     *              data = this.database.undefinedToNull( data );
-     * @endcode
-     * 
-     */
-    undefinedToNull(obj) {
-        obj = JSON.parse(JSON.stringify(obj, function (k, v) {
-            if (v === undefined) return null;
-            else return v;
-        }));
-        return obj;
-    }
 
 
 

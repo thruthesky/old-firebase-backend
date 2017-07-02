@@ -16,6 +16,10 @@ Refer issues
     * And work in that folder independently from the parent project.
 
 
+# Terms
+
+* `3rd party social login` is the social logins that are not supported by Firebase Authentication. like kakao, naver.
+
 
 # Installation
 
@@ -116,19 +120,59 @@ while compiling angular code, and if you see any error messages by compiling fun
 
 # User login
 
+* All user must log in into Firebase.
 
 
-## Kakao login
+`UserSerivce.isLogged` is the only property that determins whether the user logged or not and it checks Firebase log-in.
+So, all `3rd party social login` must create an Email/Password account in Firebase.
 
-When a user loggs in with Kakao, app will get a number of `id` and `email`.
-`id` is used as `login id` and `email` is used as 'password'.
-`id` and `email` must not be shown to public or others.
-If you do not show `id` and `email` to public, the login will be very much safe.
 
-* Remember: `id` will be login email, `email` will be password.
+* Secure key and Pofile data will be loaded
+  * every time user logs in
+  * or when a user refreshes the site.
+
+
+
+
+
+
+## 3rd Party Login Security - Kakao, Naver, and Others.
+
+
+
+When a user logs in with `3rd party social` like Naver/Kakao, the user needs to register to Firebase using email/password authentication.
+
+App will user the `id` and t `email` form the `3rd Party Social`.
+
+`id` alone is very easy to guess and `email` alone is also very easy to guess.
+
+BUT the combination of `id` and `email` is almost impossible to guess unless you know one of them.
+
+
+So, it is very secure to use `3rd Party Social id` as the Firebase user id(email) and `3rd Party Social email` as the user's password.
+
+* Remember `3rd party social id` is used as `login email` and `3rd party soical email` is used as `login password`.
+* `3rd party social id` and `3rd party social email` must not be shown to public or others.
+  If you do not show `3rd party social id` and `3rd party social email` to public, the login will be very much safe.
+
+
+
+## Profile
+
+Every time a user logs in, his profile data will be updated by his social profile data. BUT other profile data like phone number will not be overwritten.
+
+So, all user shall have a node under `/user/profile`.
+And that node will be updated( NOT reset) when the user updates his profile on profile page.
+
+
+
+
+
 
 
 ## Secret Key
+
+Every time a user logs in( or refresh the site ), it will get a security key form `/user/secret`. If security key does not exist for that user, it wil generate one.
 
 Secret key is very important key and only readable by the owned-user.
 
@@ -148,3 +192,162 @@ Secret key is very important key and only readable by the owned-user.
 
 
 * if wrong `uid` or wrong `secret` passed, `secret_does_not_match` error will be thrown.
+
+
+
+
+# CODE FLOW
+
+## User
+
+### Login
+
+* facebook login click => app.loggedIn() => wait with onAuthStateChanged() until login => user.updateProfile()
+* kakao login click => kakao.Auth.login() success => app.thirdPartySocialLoginSuccessHandler() => app.emailLogin() => [ If login failed app.emailRegister ] => app.loggedIn() => wait with onAuthStateChanged() until login => user.updateProfile()
+
+* Go to profile page => user.getProfile() => Display user information.
+* Profile form submit => user.updateProfile()
+
+
+
+
+### Login Status
+
+It is important to understand how login status changes.
+
+When app first loads, login status is always pending(not checked) until it access to database using 'onAuthStateChanged()'.
+When app calls 'onAuthStateChanged()', it will access database and it may be returned with null, meaning the user is not logged in.
+And later, when user logs in, 'onAuthStateChange()' may be returned with 'user info', meaning the user is now logged in.
+
+When app try to get user information from database, the app must do it ONLY IF the user has logged in.
+
+  * What if the developer don't want to check if user has logged in? because it is a tedious task that you have to write the same code every where.
+
+So, there is a helper getters.
+
+
+* `UserService.isPending` is true when app is loading and before calling `onAuthStateChanged()`. The app does not know yet, if the user has logged in or not.
+* After `onAuthStateChanged()` is called, `.isPending` becomes 'false' and one of `.isLogin` or `.isLogout` will be true and the other will false.
+* `.isLogin` may be 'false' after calling `onAuthStateChanged()` but later ( without refreshing the site ), `.isLogin` can be 'true'.
+
+* The difficult part is that 'login status' changes without refresh the site so the developer must monitor 'login status' changes.
+
+* And there are more to consider;
+  
+  * When user logs in for the first time, there is no secure key yet. and the app is trying to access to it, unexpected result may happens.
+
+````
+
+<div *ngIf=" user.isLogin ">
+  You are logged in as <b>{{ user.auth.currentUser.displayName }}</b>
+  <button (click)=" user.logout() ">Loggout</button>
+  <div>Who am I? : {{ user.name }}</div>
+  <div>Am I admin? {{ user.isAdmin }}</div>
+</div>
+<div *ngIf=" user.isLogout ">
+  * You are not logged in !!
+</div>
+
+
+````
+
+
+* Attention: Use `.isLogin`, `.isLogout`, `.isPending` to check user login status.
+  * If you are going to use in other way around like
+    * `UserSerivce.getProfile( p => this.profile = p)` and use it to check if the user login in template, that's a mistake.
+    Because you can logout, and `this.profile` still have a value. It is not easy write 100% clean code.
+
+* If you need to use user's profile data in template, keep it in mind that profile data may not be available until app completes the socket connection from database.
+
+so, code like below
+
+component class)
+````
+user.getProfile(profile => this.profile = profile, e => console.error(e));
+````
+
+template
+````
+<div *ngIf=" user.isLogin && profile ">
+  {{ profile.name }}
+</div>
+````
+
+
+
+### Best practice with login status or other coding.
+
+* Very important : Follow Firebase coding flow.
+
+  * See : https://docs.google.com/document/d/1xNDf6hYyBXWrYhBb4y5gV84MhNgKFdiBE0BYT97GpzE/edit#heading=h.f67mmu2bsz7
+
+  * Firebase uses `Promises`. Just use `Promises` and every thing will be okay. Or you will has trouble.
+
+  * Don't cache `database data` on memory or localStorage
+
+    * For instance, if you are going to load user profile data and save it to memory or localStorage for fast load in the future, the problem begins from here.
+
+    * Even thouggh it is a little bit slow on connecting and loading `Firebase Database`, just do it every time without caching.
+
+
+
+* Since we are going to use SPA, once user has logged in, the user will always be logged in throught the session unless the user refreshes the site.
+
+* For instance, if the user is on 'profile' page and refreshes the site, then the app will be in 'pending' while booting.
+
+  * The app will try to get user profile since the user is on 'profile' page BUT the app may be in 'pending'.
+  * So, there will be an error.
+  * To avoid the error, developer can check login status and wait until 'pending' status changes to 'login' or 'logout'.
+  * But this is tedious.
+
+* Use `UserService.checkLogin( loginCallback, logoutCallback, errorCallback )` to know if user has logged in or not.
+
+  * You don't have to worry about 'pending' with `checkLogin` since it will callback after `onAuthStateChanged()`.
+
+
+
+
+### User Data availability check.
+
+* Use `UserSerivce.checkLogin()` to see if the user has already logged or not.
+
+
+
+* You can simply use `onAuthStateChnaged()` to make sure if user has logged in.
+
+````
+this.user.auth.onAuthStateChanged((user: firebase.User) => {
+    if ( user ) { // user logged in.
+        /// do what ever
+    }
+    else {
+        
+    }
+});
+````
+
+* To get user profile,
+````
+  UserService.getProfile(p => console.log(p), e => console.error(e));
+````
+
+
+
+# Database Structure
+
+## User Data
+
+* /user/secret
+  is the user secret
+
+* /user/profile
+  is the user profile
+
+## Admin
+
+* /admin
+  is the admins.
+
+
+## Forum
+

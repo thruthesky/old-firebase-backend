@@ -1,6 +1,31 @@
+/**
+ * Firebase Backend Library
+ * 
+ * This clss is utility library of firebase backend. What is does;
+ * 
+ *      - Provides basic functions
+ *      - Firebase works like getting or setting data.
+ * 
+ * 
+ * @code How to use
+ *      class XXXX {
+ *          lib;
+ *          constructor() {
+ *              this.lib = new Library( this.root );
+ *          }
+ *      }
+ * @endcode
+ * 
+ * @code How to use on existing class
+ * 
+ *      this.user.lib.getSecretKey().then( key => key );
+ * 
+ * @endcode
+ * 
+ */
+
 import * as firebase from 'firebase/app';
 import { SECRET_KEY_PATH } from './define';
-
 
 export class Library {
     constructor(
@@ -17,6 +42,27 @@ export class Library {
         }
         return unique;
     }
+
+
+    /**
+     * 
+     * Turns undefined into null to avoid "first argument contains undefined in property of firebase" error.
+     * 
+     * @param obj 
+     * 
+     * @code
+     *              data = this.lib.trimObject( data );
+     * @endcode
+     * 
+     */
+    trimObject(obj) {
+        obj = JSON.parse(JSON.stringify(obj, function (k, v) {
+            if (v === undefined) return null;
+            else return v;
+        }));
+        return obj;
+    }
+
 
     /**
      * 
@@ -41,6 +87,11 @@ export class Library {
             //     console.log(e);
             // });
     }
+
+
+    /**
+     * Sets a new secure key.
+     */
     setSecretKey(uid: string): firebase.Promise<any> {
         let key = this.randomString(uid);
         console.log(`key: ${key} is going to be set`);
@@ -51,34 +102,22 @@ export class Library {
     }
 
 
+    /**
+     * If secure key exists, it just returns the key.
+     *      - or it will generate new secure key.
+     * @param uid user uid
+     */
     generateSecretKey(uid: string): firebase.Promise<any> {
-        //console.log(`generateSecretKey() for ${uid}`);
+        console.log(`generateSecretKey() for uid: ${uid}`);
         return this.getSecretKey(uid)
             .then(key => {
-                //console.log("generateSecretKey() => getSecretKey() ")
+                console.log("generateSecretKey() => getSecretKey() : ", key);
                 if (key) return key;
                 else {
                     //console.log(`key not exist. going to set`);
                     return this.setSecretKey(uid);
                 }
             })
-            // .catch(e => console.error(e));
-
-        // let key = this.root.child(SECRET_KEY_PATH).child(uid);
-        // key.once('value')
-        //     .then(snap => {
-        //         if (snap.val()) {
-        //             console.log("Got secret key: ", snap.val());
-        //             callback(snap.val())
-        //         }
-        //         else {
-        //             let unique = randomString(this.uid);
-        //             console.log("secret key does not exists. generate: ", unique);
-        //             key.set(unique);
-        //             callback(unique);
-        //         }
-        //     })
-        //     .catch(e => console.error(e));
     }
 
 }
