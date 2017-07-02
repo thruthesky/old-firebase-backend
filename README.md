@@ -274,6 +274,14 @@ template
 ````
 
 
+Example of getProfile)
+````
+  this.app.user.getProfile(p => this.setProfile(p), e => {
+    if ( isError(e.message, ERROR.user_not_logged_in ) )this.error = "You are not logged in";
+    else this.error = e.message;
+  });
+````
+
 
 ### Best practice with login status or other coding.
 
