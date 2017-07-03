@@ -287,12 +287,25 @@ So, there is a helper getters.
 
 * Attention: Use `.isLogin`, `.isLogout`, `.isPending` to check user login status.
   * If you are going to use in other way around like
-    * `UserSerivce.getProfile( p => this.profile = p)` and use it to check if the user login in template, that's a mistake.
+    * using `UserSerivce.profile` and in template to see if the user logged in/out is a mistake.
     Because you can logout, and `this.profile` still have a value. It is not easy write 100% clean code.
 
-* If you need to use user's profile data in template, keep it in mind that profile data may not be available until app completes the socket connection from database.
+* If you need to use user's profile data in template, keep it in mind that profile data may not be available until the app completes `onAuthStateChanged()` (the socket connection) from database.
 
-so, code like below
+* Use `UserService.getProfile()`. It is a safe way.
+
+
+### UserService.getProfile()
+
+This is a safe way to get user profile.
+
+While UserService.loadProfile( uid ) load a user profile, 
+
+     * @note It does not use onAuthStateChanged() since it is not easy to subscribe and unsubscribe.
+     * @note It waits 20s until timeout.
+    
+    
+     * 
 
 component class)
 ````

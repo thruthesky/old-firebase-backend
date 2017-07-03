@@ -342,33 +342,32 @@ export class UserService extends Base {
 
     /**
      * Gets logged user's profile data.
+     * @see readme#getProfile
      * 
-     * 
-     * 
-     * @note This is a safe way to get user profile.
-     * @note It uses onAuthStateChanged() to make sure that the user logged in.
-     * @note This works as callback since firebase.auth.onAuthStateChanged() is not based on promise.
-     * 
-     * @code
-     *      
-     * @endcode
-     *
      * 
      * @param success Success callback with profile data.
      * @param error Error call back with Error
      */
+    private getProfileCount = 0;
     getProfile(success: (profile) => void, error: (e) => void): void {
-        this.auth.onAuthStateChanged(user => {
-            if (user) {
-                this.loadProfile(user.uid)
+        if ( this.isPending ) {
+            console.log("getProfile() pending count: ", this.getProfileCount );
+            if ( this.getProfileCount ++ > 100 ) return error( new Error( ERROR.timeout ) );
+            else setTimeout( () => this.getProfile( success, error ), 200 );
+        }
+        else {
+            if ( this.isLogin ) {
+                this.loadProfile(this.uid)
                     .then( p => {
                         this.profile = p;
                         success( p );
                     })
                     .catch(error);
             }
-            else error(new Error(ERROR.user_not_logged_in));
-        }, e => error(e));
+            else {
+                error( new Error( ERROR.user_not_logged_in ) );
+            }
+        }   
     }
 
 
@@ -376,6 +375,7 @@ export class UserService extends Base {
      * 
      * Loads a user profile data from database and Returns it with Promise.
      * 
+     * @warning Admin may load other user's profile data. ( The other user profile data is protected by Rules, though. )
      * @note it needs user uid.
      * 
      * @param uid User uid

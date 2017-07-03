@@ -388,9 +388,9 @@ export class Forum extends Base {
             /**
              * Does not save uid here since 'uid' cannot be trusted as of Jun 16, 2017.
              */
-            await this.categoryPostRelation.child(category).child(key).set(true);
+            await this.categoryPostRelation().child(category).child(key).set(true);
         }
-        await this.categoryPostRelation.child(ALL_CATEGORIES).child(key).set(true);
+        await this.categoryPostRelation().child(ALL_CATEGORIES).child(key).set(true);
     }
 
     /**
@@ -403,9 +403,9 @@ export class Forum extends Base {
     async deleteCategoryPostRelation(key, categories) {
         if (categories && categories.length) {
             for (let category of categories) {
-                await this.categoryPostRelation.child(category).child(key).set(null);
+                await this.categoryPostRelation().child(category).child(key).set(null);
             }
-            await this.categoryPostRelation.child(ALL_CATEGORIES).child(key).set(null);
+            await this.categoryPostRelation().child(ALL_CATEGORIES).child(key).set(null);
         }
     }
 
@@ -442,6 +442,17 @@ export class Forum extends Base {
     }
 
 
+    /**
+     * 
+     * @param key Post push-key to load a post.
+     * @code
+                this.app.forum.postData().once('value').then(s => {
+                        let obj = s.val();
+                        for (let k of Object.keys(obj)) this.addPostOnTop(obj[k]);
+                        callback();
+                    });
+     * @endcode
+     */
     postData(key?: string): firebase.database.Reference {
         if (this.isEmpty(key)) return this.root.ref.child(this.postDataPath);
         else return this.root.ref.child(this.postDataPath).child(key);
@@ -449,8 +460,17 @@ export class Forum extends Base {
     get postDataPath(): string {
         return this.path(POST_DATA_PATH);
     }
-    get categoryPostRelation(): firebase.database.Reference {
-        return this.root.ref.child(this.categoryPostRelationPath);
+    /**
+     * 
+     * @param category 
+     * @code
+     *              this.categoryPostRelation().child(category).child(key).set(true);
+     *              this.categoryPostRelation().child(ALL_CATEGORIES).child(key).set(true);
+     * @endcode
+     */
+    categoryPostRelation( category?: string ): firebase.database.Reference {
+        if ( this.isEmpty(category) ) return this.root.ref.child(this.categoryPostRelationPath);
+        else return this.root.child( this.categoryPostRelationPath ).child( category );
     }
     get categoryPostRelationPath(): string {
         return this.path(CATEGORY_POST_RELATION_PATH);
