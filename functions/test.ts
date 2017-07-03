@@ -14,7 +14,6 @@ import { Forum } from './model/forum/forum';
 import { POST, CATEGORY, ALL_CATEGORIES } from './model/forum/forum.interface';
 import { ERROR, isError } from './model/error/error';
 import * as chalk from 'chalk';
-import { Library } from './library';
 interface POST_REQUEST { function: string, data: POST };
 
 
@@ -29,7 +28,6 @@ function datetime() {
  */
 class AppTest {
   root;
-  lib: Library;
   forum: Forum;
   errorCount: number = 0;
   unexpectedCount: number = 0;

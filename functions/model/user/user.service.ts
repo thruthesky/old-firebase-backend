@@ -9,8 +9,10 @@ import { ERROR } from './../error/error';
 
 import { SECRET_KEY_PATH, PROFILE_PATH, PROFILE_KEY } from './../../define';
 
+import { Base } from './../base/base';
 
-import { Library } from './../../library';
+
+
 
 
 // export interface USER_REGISTER {
@@ -34,13 +36,12 @@ export interface SOCIAL_PROFILE {
 }
 
 @Injectable()
-export class UserService {
+export class UserService extends Base {
     auth: firebase.auth.Auth;
     private _isAdmin: boolean = false;
     root: firebase.database.Reference;
     profile = null;
     secretKey: string;
-    lib: Library;
     /**
      * if user logged in, it will become 'login'.
      * if user logged out, it will become 'logout'.
@@ -50,11 +51,10 @@ export class UserService {
     private loginStatus: 'pending' | 'login' | 'logout' = 'pending';
     constructor(
     ) {
-
+        super();
         this.root = firebase.database().ref('/');
         this.auth = firebase.auth();
 
-        this.lib = new Library(this.root);
 
 
         /**
@@ -236,7 +236,7 @@ export class UserService {
      * 
      */
     getOrGenerateSecretKey(): firebase.Promise<any> {
-        return this.lib.generateSecretKey(this.uid);
+        return this.generateSecretKey(this.uid);
     }
 
 
@@ -268,7 +268,7 @@ export class UserService {
     updateProfile(profileData): firebase.Promise<any> {
         // console.log("Going to update user profile: user logged? ", this.isLogin);
         if (profileData.password !== void 0) delete profileData.password;
-        profileData = this.lib.trimObject(profileData);
+        profileData = this.trimObject(profileData);
         return this.root.child(PROFILE_PATH).child(this.uid).update(profileData);
     }
 

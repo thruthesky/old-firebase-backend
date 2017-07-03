@@ -7,14 +7,12 @@ import {
     POST_DATA_PATH, CATEGORY_POST_RELATION_PATH, ALL_CATEGORIES
 } from './forum.interface';
 
-import { Library } from './../../library';
 
 
 /**
  * This is not a service. You cannot inject.
  */
 export class Forum extends Base {
-    lib: Library;
     debugPath: string = ''; // debug path.
     lastErrorMessage: string = '';
     constructor() {
