@@ -40,6 +40,10 @@ export class UserService extends Base {
     auth: firebase.auth.Auth;
     private _isAdmin: boolean = false;
     root: firebase.database.Reference;
+
+    /**
+     * 
+     */
     profile = null;
     secretKey: string;
     /**
@@ -48,7 +52,7 @@ export class UserService extends Base {
      * if app does not know and try to get user login status, then it will become 'pending'.
      * By default ( initially ), it is pending (when the app is loaded for the first time )
      */
-    private loginStatus: 'pending' | 'login' | 'logout' = 'pending';
+    loginStatus: 'pending' | 'login' | 'logout' = 'pending';
     constructor(
     ) {
         super();
@@ -65,13 +69,15 @@ export class UserService extends Base {
             if (user) {
                 this.loginStatus = 'login'; /// this must come first before anything else.
                 console.log("UserService::onAuthStateChanged() => logged-in: ", user.uid);
+                console.log("loginStatus: ", this.loginStatus);
+
                 this.getOrGenerateSecretKey()
                     .then(key => {
                         console.log("Got Secret Key: ", key);
                         this.secretKey = key;
                     })
                     .catch(e => console.error(e));
-                this.getProfile( p => this.profile = p, e => console.error(e) );
+                this.getProfile(() => {}, e => console.error(e));
             }
             else {
                 this.loginStatus = 'logout';
@@ -183,9 +189,19 @@ export class UserService extends Base {
     }
 
     get isLogin(): boolean {
+        // return this.loginStatus == 'login';
         if (this.loginStatus == 'login') {
             if (this.auth.currentUser === void 0) return false;
-            else return !!this.auth.currentUser;
+            else {
+                if ( this.auth.currentUser ) {
+                    //console.log("yes auth.currentUser has value");
+                    return true;
+                }
+                else {
+                    //console.log("No. currentUser is null");
+                    return false;
+                }
+            }
         }
         else return false;
     }
@@ -322,21 +338,62 @@ export class UserService extends Base {
     // }
 
 
+
+
     /**
-     * This works as callback since firebase.auth.onAuthStateChanged() is not based on promise.
+     * Gets logged user's profile data.
+     * 
+     * 
+     * 
+     * @note This is a safe way to get user profile.
+     * @note It uses onAuthStateChanged() to make sure that the user logged in.
+     * @note This works as callback since firebase.auth.onAuthStateChanged() is not based on promise.
+     * 
+     * @code
+     *      
+     * @endcode
+     *
+     * 
+     * @param success Success callback with profile data.
+     * @param error Error call back with Error
      */
     getProfile(success: (profile) => void, error: (e) => void): void {
         this.auth.onAuthStateChanged(user => {
             if (user) {
-                return this.root.child(PROFILE_PATH).child(user.uid).once('value')
-                    .then(snap => {
-                        let profile = snap.val();
-                        if (!profile) profile = {};
-                        success(profile);
-                    }, e => error(e));
+                this.loadProfile(user.uid)
+                    .then( p => {
+                        this.profile = p;
+                        success( p );
+                    })
+                    .catch(error);
             }
             else error(new Error(ERROR.user_not_logged_in));
         }, e => error(e));
+    }
+
+
+    /**
+     * 
+     * Loads a user profile data from database and Returns it with Promise.
+     * 
+     * @note it needs user uid.
+     * 
+     * @param uid User uid
+     * @return Promise with user profile.
+     * 
+     * @code
+                app.user.auth.onAuthStateChanged( user => {
+                    app.user.loadProfile( user.uid ).then( p => this.profile = p );
+                });
+     * @endcode
+     */
+    loadProfile(uid): firebase.Promise<any> {
+        return this.root.child(PROFILE_PATH).child(uid).once('value')
+            .then(snap => {
+                let profile = snap.val();
+                if (!profile) profile = {};
+                return profile;
+            });
     }
 
 
@@ -361,43 +418,5 @@ export class UserService extends Base {
         });
     }
 
-
-
-
-
-    /**
-     * Save user's profile into memory because app may do template binding and access profile data too much.
-     * 
-     * @param profile user profile data.
-     */
-    // saveProfile( profile ) {
-    //     this.profile = profile;
-    //     // localStorage.setItem(PROFILE_KEY, JSON.stringify( profile ));
-    // }
-    // delete user's profile
-    // deleteProfile() {
-    //     this.profile = null;
-    //     // localStorage.removeItem(PROFILE_KEY);
-    // }
-
-    /**
-     * Gets user profile data from cache.
-     * The profile data is being download and saved into cache every time the user logs in/refreshes page.
-     */
-    // getProfile() {
-    //     if ( this.isLogged ) return this.profile;
-    //     else return null;
-
-    //     // let re = localStorage.getItem(PROFILE_KEY);
-    //     // if (re) {
-    //     //     try {
-    //     //         let profile = JSON.parse(re);
-    //     //         return profile;
-    //     //     }
-    //     //     catch (e) {
-    //     //         console.error(e);
-    //     //     }
-    //     // }
-    // }
 
 }

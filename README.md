@@ -209,9 +209,19 @@ Secret key is very important key and only readable by the owned-user.
 
 # CODE FLOW
 
+
 ## User
 
-### Login
+### User login initialization
+
+* App run => app.component => app.service => UserService => onAuthStateChanged()
+  * if already logged in => getOrGenerateSecretKey()
+  * if already logged in => `loginStatus` = 'login', getProfile() => set user profiel data to `this.profile`
+  * if not logged in => `loginStatus` = 'logout', null to `this.profile`
+
+
+
+### Login Flow
 
 * facebook login click => app.loggedIn() => wait with onAuthStateChanged() until login => user.updateProfile()
 * kakao login click => kakao.Auth.login() success => app.thirdPartySocialLoginSuccessHandler() => app.emailLogin() => [ If login failed app.emailRegister ] => app.loggedIn() => wait with onAuthStateChanged() until login => user.updateProfile()
