@@ -10,8 +10,16 @@ export class Base {
     constructor() {
     }
 
+    /**
+     * Sets database root reference
+     * @param root Database reference of root ('/')
+     * @code
+     *          (new Forum()).setRoot(db.ref('/'));
+     * @endcode
+     */
     setRoot( root ) {
         this.root = root;
+        return this;
     }
 
 

@@ -93,18 +93,18 @@ class AppTest {
   async testMethods() {
     console.log("\n =========================== testMethods() =========================== ")
 
-    let re = this.forum.functionName({ function: '' });
-    this.expect(re, 'create', `functions name is empty`);
+    // let re = this.forum.functionName({ function: '' });
+    // this.expect(re, 'create', `functions name is empty`);
 
-    re = this.forum.functionName({ function: 'edit' });
-    this.expect(re, 'edit', `functions name is empty`);
+    // re = this.forum.functionName({ function: 'edit' });
+    // this.expect(re, 'edit', `functions name is empty`);
 
-    re = this.forum.functionName({ function: 'delete' });
-    this.expect(re, 'delete', `functions name is empty`);
+    // re = this.forum.functionName({ function: 'delete' });
+    // this.expect(re, 'delete', `functions name is empty`);
 
 
-    re = this.forum.functionName({ function: 'wrong' });
-    this.expect(re, 'wrong', `functions name is empty`);
+    // re = this.forum.functionName({ function: 'wrong' });
+    // this.expect(re, 'wrong', `functions name is empty`);
 
 
 
@@ -459,17 +459,19 @@ class AppTest {
       })
 
 
-    await this.forum.postApi({
-      function: 'no-function-name',
+    await this.forum.api({
+      function: "wrong-function-name",
       uid: this.userA.uid,
       secret: this.userA.secret
     })
+      .then(() => { this.error("wrong function name must fail.")})
       .catch(e => this.expect(e.message, ERROR.unknown_function, 'Wrong function name test'));
 
 
 
-    // create edit
+    // create edit. expect error. 'cause no category.
     let post: POST = {
+      function: 'createPost',
       subject: 'post create test by api',
       content: 'This is content',
       categories: [],
@@ -478,20 +480,20 @@ class AppTest {
     };
 
     // expect error.
-    await this.forum.postApi(post)
+    await this.forum.api(post)
       .then(() => this.error("Calling postApi with no category must be failed."))
       .catch(e => this.expect(e.message, ERROR.no_categories, 'postApi() for creating a post with no category properly failed'));
 
 
     // expect error.
     post['categories'] = ['wrong-category'];
-    await this.forum.postApi(post)
+    await this.forum.api(post)
       .then(() => this.error("Calling postApi with wrong category must be failed."))
       .catch(e => this.expect(e.message, ERROR.category_not_exist, 'postApi() for creating a post with wrong category properly failed'));
 
     // expect error: wrong uid
     post.secret = "-a-wrong-secret-key";
-    await this.forum.postApi(post)
+    await this.forum.api(post)
       .then(() => this.error("Calling postApi with wrong secret must be failed."))
       .catch(e => this.expect(e.message, ERROR.secret_does_not_match, `'secert does match' properly failed`));
 
@@ -500,7 +502,7 @@ class AppTest {
 
     // expect success.
     post['categories'] = ['abc', 'flower'];
-    let key = await this.forum.postApi(post)
+    let key = await this.forum.api(post)
       .then(key => { this.success("Post create with postApi(function:create) success . key: " + key); return key; })
       .catch(e => this.error("A post should be created."));
 
@@ -508,24 +510,25 @@ class AppTest {
     // console.log("KEY ===> ", key);
 
     /// edit with no category
+    post.function = 'editPost';
     post.key = key;
     post.categories = [];
     post.subject = "Subject updated...!";
     post.content = "Content updated...!";
-    await this.forum.postApi(post)
+    await this.forum.api(post)
       .then(() => this.error("Calling postApi with empty category must be failed."))
       .catch(e => this.expect(e.message, ERROR.no_categories, 'postApi() for editing a post with no category properly failed'));
 
 
     /// edit with wrong category
     post.categories = ['abc', 'def', 'flower'];
-    await this.forum.postApi(post)
+    await this.forum.api(post)
       .then(() => this.error("Calling postApi with empty category must be failed."))
       .catch(e => this.expect(e.message, ERROR.category_not_exist, 'postApi() for editing a post with wrong category properly failed'));
 
     /// edit subject/content/category and check
     post.categories = ['abc'];
-    await this.forum.postApi(post)
+    await this.forum.api(post)
       .then(key => {
         this.success("Post edit success with: " + key);
         this.forum.getPostData(key).then((p: POST) => {
@@ -548,7 +551,7 @@ class AppTest {
     /// edit with wrong post key. expect error
     let newData = Object.assign({}, post);
     newData.key = '-wrong-post-key';
-    await this.forum.postApi(newData)
+    await this.forum.api(newData)
       .then(() => this.error("Calling postApi with wrong post key must be failed."))
       .catch(e => this.expect(e.message, ERROR.post_not_found_by_that_key, `'edit' properly failed`));
 
@@ -557,29 +560,36 @@ class AppTest {
 
 
     /// delete post
-    newData.function = 'delete';
+    newData.function = 'deletePost';
     newData.key = '-wrong-post-key';
-    await this.forum.postApi(newData)
+    await this.forum.api(newData)
       .then(() => this.error("Calling postApi for delete with wrong post key must be failed."))
       .catch(e => this.expect(e.message, ERROR.post_not_found_by_that_key, `'delete' properly failed`));
 
     newData.key = post.key;
     newData.uid = '-wrong-uid';
 
-    await this.forum.postApi(newData)
+    await this.forum.api(newData)
       .then(() => this.error("Calling postApi for delete with wrong post key must be failed."))
       .catch(e => this.expect(e.message, ERROR.secret_does_not_match, `'delete' of 'wrong-user' properly failed`));
 
 
     newData.uid = post.uid;
 
-    await this.forum.postApi(newData)
+    await this.forum.api(newData)
       .then(() => this.success(`delete success`))
       .catch(e => this.error(`'delete' failed`));
 
     await this.forum.getPostData( post.key )
       .then(() => this.error('post was not deleted'))
       .catch( e => this.expect( e.message, ERROR.post_not_found_by_that_key, 'post poroperly deleted'))
+
+
+
+    // @todo
+    // post create with key
+
+    // post CRUD by admin.
 
   }
 

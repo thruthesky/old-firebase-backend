@@ -119,6 +119,18 @@ It uses angularfire2 that is not even installed on cloud function. so do not car
 
 
 
+## Firebase Cloud Functions as Backend
+
+* Make the `fire Functions` as minimal as it can be because it is extremely difficult to work with `functions`. There is no good way of debugging.
+
+* Put ONLY critical code inside `fire functions` like post creating, editing, deleting.
+  Mostly user actions.
+  * If you don't put post create in `fire functions`, bad user may put garbage data on `/forum/category-post-relation` and that will ruin the system.
+  * It is okay to create garbase post using `fire functions` because at least, `/forum/category-post-relation` and `/forum/post/data` will be matched each other.
+
+
+
+
 
 # Trouble Shooting
 

@@ -14,13 +14,14 @@ const app = admin.initializeApp({
 });
 const db = app.database();
 
-exports.postApi = functions.https.onRequest((req, res) => {
+exports.api = functions.https.onRequest((req, res) => {
 
   cors(req, res, () => {
     console.log("postApi() begins!");
-    let forum = new Forum(db.ref('/'));
+    let forum = (new Forum()).setRoot(db.ref('/'));
     //res.send( JSON.stringify( req.body ) + JSON.stringify( req.params ) + JSON.stringify( req.query ) );
-    forum.postApi(req.body)
+    
+    forum.api(req.body)
       .then(x => res.send({code: 0, data: x}))
       .catch(e => res.send({ code: e.message, message: forum.getLastErrorMessage }));
     console.log("Send");

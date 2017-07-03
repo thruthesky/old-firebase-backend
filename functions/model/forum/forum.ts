@@ -30,6 +30,14 @@ export class Forum extends Base {
      * 
      * Creates a category.
      * 
+     * @note This method does not check admin authentication.
+     * @note So, This method must not be called by Javascript or Angular.
+     * @note So, There is no reason for this code to be bunlded in Angular. This code must be in backend if you decide to hide the backend structure.
+     * @note But you cannot hide the backend structure.
+     * @note So, there is no benefit to put this code in backend and try to hide the database structure.
+     * 
+     * @note 
+     * 
      * @param data Category data.
      * 
      * @return Promise
@@ -183,8 +191,12 @@ export class Forum extends Base {
     isEmpty(category) {
         return category === void 0 || !category;
     }
+
     error(e) {
         return firebase.Promise.reject(new Error(e));
+    }
+    throwError(e) {
+        throw new Error(e);
     }
 
 
@@ -479,37 +491,40 @@ export class Forum extends Base {
      * 
      * @param params User input. `function`, `uid`, `secret` are required.
      */
-    postApi(params): firebase.Promise<any> {
+    api(params): firebase.Promise<any> {
 
         if (params === void 0) return this.error(ERROR.requeset_is_empty);
+        if (params['function'] === void 0) return this.error(ERROR.function_is_not_provided);
 
         if (!params['uid']) return this.error(ERROR.uid_is_empty);
         if (this.checkKey(params.uid)) return this.error(ERROR.malformed_key);
 
         if (!params['secret']) return this.error(ERROR.secret_is_empty);
 
-        return this.getSecretKey(params.uid).then(key => {          /// secret key check for security.
-            if (key === params['secret']) {
-                switch (this.functionName(params)) {
-                    case 'create': return this.createPost(params);
-                    case 'edit': return this.editPost(params);
-                    case 'delete': return this.deletePost(params);
-                    default: return this.error(ERROR.unknown_function);
-                }
-            }
-            else return this.error(ERROR.secret_does_not_match);
-        });
+        return this.getSecretKey(params.uid)
+            .then(key => {          /// secret key check for security.
+                if (key === params['secret']) return key;
+                else return this.error(ERROR.secret_does_not_match);
+            })
+            .then(key => {
+                let func = params['function'];
+                if (this[func] === void 0) return this.error(ERROR.unknown_function);
+                return this[func](params);
+            });
     }
 
-    functionName(params) {
-        let func = '';
-        if (params['function']) func = params['function'];
-        else {
-            if (params['key']) func = 'edit';
-            else func = 'create';
-        }
-        return func;
-    }
+
+
+
+    // functionName(params) {
+    //     let func = '';
+    //     if (params['function']) func = params['function'];
+    //     else {
+    //         if (params['key']) func = 'edit';
+    //         else func = 'create';
+    //     }
+    //     return func;
+    // }
 
 
     setLastErrorMessage(m) {
