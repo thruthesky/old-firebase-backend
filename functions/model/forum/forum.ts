@@ -499,7 +499,6 @@ export class Forum extends Base {
             }
             else return this.error(ERROR.secret_does_not_match);
         });
-
     }
 
     functionName(params) {
