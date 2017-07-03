@@ -78,7 +78,7 @@ in .firebaserc
 * Since we are not listing database onWrite, we do not need a fake database ref path like "/a/forum/category"
 
 
-## No anonymous user
+## No registration
 
 * Since we are planning only with social login, we don't do user authorization code.
 * If there is a case for anonymous user could write, then just let them write but not editable and deletable.
@@ -90,6 +90,17 @@ in .firebaserc
 * When you are going to create/edit a post, you don't have to give 'function' property.
 * It is determined by 'key' of the POST data. If 'key' does not exist, it's 'create'. If it has 'key' then, it is 'edit'.
 * POST.function can be 'create', 'edit', 'delete'.
+
+
+
+## Base class.
+
+Since the backend is running on `Fire Functions` ( Firebase Cloud Functions ),
+the database reference is different from front end.
+
+So, the App needs to plug `database connection` to the Base class.
+
+
 
 ## User module
 
@@ -317,6 +328,17 @@ Example of getProfile)
 
 ### User Data availability check.
 
+* When `onAuthStateChanged()` as login, it loads profile at `UserService.profile`.
+
+  * Warning. DO NOT use this when you are going to update user profile.
+    Because it is not updated in real-time.
+    For instance, your name was 'Peter' and if you change your name to 'abc' and then you create a post, then your name will still be 'Peter' not 'abc'.
+    This is not a big problem.
+    BUT if you use `UserService.profile` after you change name, your name may appear in old name.
+
+  * Only use this for reference like when you are going to post.
+
+
 * Use `UserSerivce.checkLogin()` to see if the user has already logged or not.
 
 
@@ -341,6 +363,19 @@ this.user.auth.onAuthStateChanged((user: firebase.User) => {
 
 
 
+## Forum Category
+
+It is a bad idea to watch the database to know `category` update.
+
+You can do whatever without watch the database.
+
+Remember. Realtime Database gives you realtime update. But don't do realtime update where you don't ever need it like category update.
+
+For CRUD of category, realtime update may help. BUT for Showing category only like in POST CREATE page, realtime update worses the app.
+
+
+
+
 # Database Structure
 
 ## User Data
@@ -358,4 +393,12 @@ this.user.auth.onAuthStateChanged((user: firebase.User) => {
 
 
 ## Forum
+
+
+
+# TEST
+
+# TEST Authentication
+
+Backend as of firebase-backend, only needs `uid` and `secure key` to get the permission/authentication.
 

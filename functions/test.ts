@@ -1,6 +1,6 @@
 import * as admin from "firebase-admin";
 import serviceAccount from "./etc/service-key";
-// Admin Key 초기화. 중요. 앱에서 한번만 초기화 해야 한다.
+// Admin Key initialization. needs to be done only once. (초기화. 중요. 앱에서 한번만 초기화 해야 한다.)
 const app = admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://sonub-e2b13.firebaseio.com"
@@ -25,7 +25,7 @@ function datetime() {
 
 /**
  * @todo with different user auth. anonymous, user, admin.
- * 
+ * @see README#TEST AUTH
  */
 class AppTest {
   root;
@@ -44,13 +44,8 @@ class AppTest {
 
   constructor() {
     this.root = db.ref('/');
-    this.lib = new Library(this.root);
-    this.forum = new Forum(this.root);
-
-
-
-
-
+    this.forum = new Forum();
+    this.forum.setRoot( this.root );
     this.run();
   }
 
@@ -116,7 +111,7 @@ class AppTest {
 
 
 
-    await this.lib.generateSecretKey(this.userA.uid)
+    await this.forum.generateSecretKey(this.userA.uid)
       .then(key => this.success(`key: ${key} generated for ${this.userA.name}`))
       .catch(e => {
         console.log("ERROR", e);
@@ -144,7 +139,6 @@ class AppTest {
     /// category create. expect: success.
     let category = { id: 'category' + datetime(), name: 'Books' };
     re = await this.forum.createCategory(category)
-      // .then(x => true)
       .catch(e => e.message);
     this.expect(re, category.id, `Category create ok with: ` + JSON.stringify(category) + ' => ' + this.forum.lastErrorMessage);
 
@@ -456,8 +450,7 @@ class AppTest {
     // await this.forum.postApi({}).catch(e => this.expect(e.message, ERROR.function_is_not_provided, 'function not providing test.'));
     //    await this.forum.postApi({ function: 'no-function-name' }).catch(e => this.expect(e.message, ERROR.requeset_data_is_empty, 'function is give but data is not given.'));
 
-
-    this.userA.secret = await this.lib.getSecretKey(this.userA.uid)
+    this.userA.secret = await this.forum.getSecretKey(this.userA.uid)
       .then(key => {
         this.success(`Got key: `);
         return key;

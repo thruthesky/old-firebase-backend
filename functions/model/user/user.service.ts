@@ -1,6 +1,4 @@
 import { Injectable } from '@angular/core';
-import { AngularFireAuth } from 'angularfire2/auth';
-import { AngularFireDatabase } from 'angularfire2/database';
 import * as firebase from 'firebase';
 import { Observable } from 'rxjs/Observable';
 import 'rxjs/add/observable/fromPromise';
@@ -51,12 +49,10 @@ export class UserService {
      */
     private loginStatus: 'pending' | 'login' | 'logout' = 'pending';
     constructor(
-        private angularFireAuth: AngularFireAuth,
-        private angularFireDatabase: AngularFireDatabase
     ) {
 
-        this.root = angularFireDatabase.database.ref('/');
-        this.auth = angularFireAuth.auth;
+        this.root = firebase.database().ref('/');
+        this.auth = firebase.auth();
 
         this.lib = new Library(this.root);
 
@@ -75,6 +71,7 @@ export class UserService {
                         this.secretKey = key;
                     })
                     .catch(e => console.error(e));
+                this.getProfile( p => this.profile = p, e => console.error(e) );
             }
             else {
                 this.loginStatus = 'logout';

@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { AngularFireDatabase } from 'angularfire2/database';
 import * as firebase from 'firebase';
 import { Forum } from './forum';
 import { ALL_CATEGORIES } from './../../../firebase-backend.module';
@@ -14,9 +13,8 @@ export class ForumService extends Forum {
 
     
     constructor(
-        public af: AngularFireDatabase
     ) {
-        super( af.database.ref('/') );
+        super();
     }
 
 
@@ -35,15 +33,15 @@ export class ForumService extends Forum {
 
      * @endcode
      */
-    observeCategory() {
-        return this.af.list( this.categoryPath );
+    // observeCategory() {
+    //     // return this.af.list( this.categoryPath );
 
-        // this.root.child( this.categoryPath ).on('value', snapshot => {
-        //     callback( snapshot.val() );
-        // });
+    //     // this.root.child( this.categoryPath ).on('value', snapshot => {
+    //     //     callback( snapshot.val() );
+    //     // });
 
 
-    }
+    // }
 
     
 
@@ -52,7 +50,9 @@ export class ForumService extends Forum {
      * 
      */
     observePosts() {
-        return this.af.list( this.category(ALL_CATEGORIES) );
+        // return this.af.list( this.category(ALL_CATEGORIES) );
+
+
     }
 
 }

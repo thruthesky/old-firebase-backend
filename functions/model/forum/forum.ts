@@ -1,4 +1,5 @@
-import * as firebase from 'firebase/app';
+import * as firebase from 'firebase';
+import { Base } from './../base/base';
 import { ERROR } from '../error/error';
 
 import {
@@ -9,19 +10,17 @@ import {
 import { Library } from './../../library';
 
 
-
 /**
  * This is not a service. You cannot inject.
  */
-export class Forum {
+export class Forum extends Base {
     lib: Library;
     debugPath: string = ''; // debug path.
     lastErrorMessage: string = '';
-    constructor(
-        private root: firebase.database.Reference
-    ) {
-        this.lib = new Library(root);
+    constructor() {
+        super();
     }
+
 
     get getLastErrorMessage(): string {
         let re = this.lastErrorMessage;
@@ -43,11 +42,12 @@ export class Forum {
      */
     createCategory(data: CATEGORY): firebase.Promise<any> {
         if (this.checkKey(data.id)) return firebase.Promise.reject(new Error(ERROR.malformed_key));
-        return this.categoryExists(data.id).then(re => {
-            throw new Error(ERROR.category_exists); // 여기에 throw 하면 요 밑 .catch() 에서 받는다. 따라서 .catch() 에서 category_exist 를 받으면 에러를 리턴하고, 아니면 생성을 한다.
-        })
+        return this.categoryExists(data.id)
+            .then(re => {
+                throw new Error(ERROR.category_exists); // 여기에 throw 하면 요 밑 .catch() 에서 받는다. 따라서 .catch() 에서 category_exist 를 받으면 에러를 리턴하고, 아니면 생성을 한다.
+            })
             .catch(e => {
-                if (e.message == ERROR.category_not_exist) {
+                if (e.message == ERROR.category_not_exist) { // Okay. No category exists. Let's create one (정상. 카테고리가 존재하지 않으므로 카테고리를 생성한다.)
                     return this.setCategory(data);
                 }
                 if (e.message == ERROR.category_exists) {
@@ -107,7 +107,7 @@ export class Forum {
 
         if (this.isEmpty(data.id)) return this.error(ERROR.category_id_empty);
 
-        data = this.lib.trimObject(data);
+        data = this.trimObject(data);
 
 
         // console.log("edit Category data: ", data);
@@ -467,6 +467,9 @@ export class Forum {
     }
 
 
+
+
+
     ////////////////////////////////////
     ////
     ////    POST API
@@ -487,7 +490,7 @@ export class Forum {
 
         if (!params['secret']) return this.error(ERROR.secret_is_empty);
 
-        return this.lib.getSecretKey(params.uid).then(key => {          /// secret key check for security.
+        return this.getSecretKey(params.uid).then(key => {          /// secret key check for security.
             if (key === params['secret']) {
                 switch (this.functionName(params)) {
                     case 'create': return this.createPost(params);
