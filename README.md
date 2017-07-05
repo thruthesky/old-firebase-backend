@@ -360,6 +360,16 @@ Example of getProfile)
 
 
 
+Recommended way to check user profile)
+
+````
+<div *ngIf=" app.user.profile ">
+  Welcome, {{ app.user.profile.name }} ( {{ app.user.profile.photoURL }})<br>
+  Am i admin? : {{ app.user.isAdmin }}
+</div>
+````
+
+
 
 ### User Data availability check.
 

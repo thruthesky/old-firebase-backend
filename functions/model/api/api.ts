@@ -85,7 +85,8 @@ export class ApiService {
      */
     errorResponse( error_code, error_message ) {
         let e = { code: error_code, message: error_message };
-        return this.getErrorString( e );
+        return e;
+        // return this.getErrorString( e );
     }
 
     /**
@@ -160,7 +161,7 @@ export class ApiService {
                     //console.error(err); // debug
                     return Observable.throw( this.errorResponse( ERROR.json_parse, "Error on parsing the response from server.")  ); // JSON 에러
                 }
-                else if ( this.isError( err ) ) return Observable.throw( this.getErrorString( err ) ); // backend api error. 프로그램 적 에러
+                else if ( this.isError( err ) ) return Observable.throw( err ); // backend api error. 프로그램 적 에러
                 else if ( err['_body'] && err['_body']['total'] == 0 && err['_body']['type'] == 'error' ) {
                     return Observable.throw( new Error( ERROR.disconnected ) );
                 }
