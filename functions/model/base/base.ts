@@ -10,6 +10,15 @@ export class Base {
     constructor() {
     }
 
+
+    error(e) {
+        return firebase.Promise.reject(new Error(e));
+    }
+    throwError(e) {
+        throw new Error(e);
+    }
+
+
     /**
      * Sets database root reference
      * @param root Database reference of root ('/')
@@ -97,6 +106,8 @@ export class Base {
      * If secure key exists, it just returns the key.
      *      - or it will generate new secure key.
      * @param uid user uid
+     * 
+     * 
      */
     generateSecretKey(uid: string): firebase.Promise<any> {
         console.log(`generateSecretKey() for uid: ${uid}`);
@@ -105,10 +116,10 @@ export class Base {
                 console.log("generateSecretKey() => getSecretKey() : ", key);
                 if (key) return key;
                 else {
-                    //console.log(`key not exist. going to set`);
+                    console.log(`Secret key not exist. going to set`);
                     return this.setSecretKey(uid);
                 }
-            })
+            });
     }
 
 

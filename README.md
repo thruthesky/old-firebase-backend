@@ -236,11 +236,17 @@ Secret key is very important key and only readable by the owned-user.
 ### Login Flow
 
 * facebook login click => app.loggedIn() => wait with onAuthStateChanged() until login => user.updateProfile()
-* kakao login click => kakao.Auth.login() success => app.thirdPartySocialLoginSuccessHandler() => app.emailLogin() => [ If login failed app.emailRegister ] => app.loggedIn() => wait with onAuthStateChanged() until login => user.updateProfile()
+* kakao login click => kakao.Auth.login() success => app.thirdPartySocialLoginSuccessHandler()
+  => app.socialFirebaseEmailLogin() => [ If login failed app.app.socialFirebaseEmailRegister ] => app.socialLoggedIn()
+  => user.updateProfile()
 
 * Go to profile page => user.getProfile() => Display user information.
 * Profile form submit => user.updateProfile()
 
+
+### Secret code creation flow
+
+* Login or Registration => onAuthStateChanged() ( => if the user has no secret? then create one ) => get secret key.
 
 
 
@@ -443,7 +449,51 @@ For CRUD of category, realtime update may help. BUT for Showing category only li
 
 # TEST
 
-# TEST Authentication
+## How to setup test evnvironment.
+
+### TEST on CLI
+
+Developer can run test code on CLI.
+
+* Edit ./firebase-backend/test.ts
+* Run `tsc`
+* Run `node test`
+
+
+### TEST on cliend-end with Anuglar in Browser.
+
+For some test like Firebase email/password registraion, should be done in client-end.
+
+
+Developer can;
+
+* Edit ./firebase-backend/functions/model/test/test.ts
+* Inject the TestService
+* Invoke `TestServer::run()`
+
+
+
+### Other test method.
+
+* You can test 
+
+
+
+
+## TEST Authentication
 
 Backend as of firebase-backend, only needs `uid` and `secure key` to get the permission/authentication.
+
+
+
+# Error Handling
+
+To make it simple, all error is a string which is called 'error code'.
+
+When error is return from api, you can ignore error.message on front end.
+
+When an Error object is thrown, the 'message' property will have its error code.
+
+'error code' without 'error message' or extra information may make debug diffcult but extremely simple to handle.
+
 

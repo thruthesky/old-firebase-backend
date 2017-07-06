@@ -192,13 +192,6 @@ export class Forum extends Base {
         return category === void 0 || !category;
     }
 
-    error(e) {
-        return firebase.Promise.reject(new Error(e));
-    }
-    throwError(e) {
-        throw new Error(e);
-    }
-
 
 
 
