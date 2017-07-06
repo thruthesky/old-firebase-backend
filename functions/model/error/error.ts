@@ -60,7 +60,9 @@ export const ERROR = {
     auth_email_already_in_use: 'auth/email-already-in-use',
     auth_invalid_email: 'auth/invalid-email',
     auth_operation_not_allowed: 'auth/operation-not-allowed',
-    firebase_auth_unknown_error: 'firebase_auth_unknown_error'
+    firebase_auth_unknown_error: 'firebase_auth_unknown_error',
+    register_email_is_empty: 'register_email_is_empty',
+    register_password_is_empty: 'register_password_is_empty'
 };
 
 

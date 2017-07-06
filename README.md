@@ -180,14 +180,98 @@ So, it is very secure to use `3rd Party Social id` as the Firebase user id(email
 
 
 
+
+## loginUser
+
+It holds `login user's firebase User object`. Not profile data.
+
+
+
+* `UserService.loginUser` is set when
+  * User registers with Email/Password.
+  * Email/Password login with `UserService.login()` is invoked
+  * All social login was made.
+
+
+
+* `loginUser` may different from `auth.currentUser`
+  * If a user;
+      * registers with `createUserWithEmailAndPassword()`,
+      * or logs in with `UserService.login()` as Email/Password login,
+      * or logs in with Social Service,
+        * the user object returned from the login method will be set to `loginUser`.
+        * This is not `currentUser`.
+  * and later when `onAuthStateChanged()` is called, the returned current user object will be set to `loginUser`. 
+  * So, `loginUser` is set twice and the first
+  this may be different from `auth.currentUser`
+
+
+
+
 ## Profile
 
-Every time a user logs in, his profile data will be updated by his social profile data. BUT other profile data like phone number will not be overwritten.
+User's profile data is saved on `/user/profile` and this node will be updated( NOT reset) when the user updates his profile on profile page.
 
-So, all user shall have a node under `/user/profile`.
-And that node will be updated( NOT reset) when the user updates his profile on profile page.
+Every time a user has auth with `onAuthStateChanged()`, the user's profile data will be updated by the user's social profile data.
+( Profile data like phone number will not be overwritten )
+
+After login/register, it takes some time for the profile to be loaded and if you are going to use it in template, it may display nothing until the profile is completely loaded.
+
+  * This mean, even if `UserService.isLogin` is true, profile data may not be loaded yet.
+
+  * For instance, when a user freshes a page in profile page,
+    * while `.isLogin` is true, but `.profile` will still be loading.
+    * App can ask user to visit main page and visit the profile page agin.
+````
+if ( ! this.app.user.profile.email ) this.app.go('/', "You are visiting this page with wrong route. Go main page and visit here again.");
+````
+
+* `UserService.profile` is set to empty object '{}' when the user is not logged in(and the profile is not loadded) which means that, refering {{ app.user.profile.name }} will not produce error.
 
 
+
+### UserService.getProfile()
+
+* It gets user profile data from `/user/profile/` based on the `loginUser.uid`. So, if the user has not logged in, there might an error. So, 'loginUser' must be set before this method.
+* And sets the user profile data to `UserService.profile` property.
+* And re-render page, ngZone.run(), to refresh/update the user profile information into view.
+
+component class) To get/load user profile data from database.
+
+````
+user.getProfile()
+  .then( profile => {} )
+  .catch( e => {
+    if ( isError(e.message, ERROR.user_not_logged_in ) )this.error = "You are not logged in";
+    else this.error = e.message;
+  });
+````
+
+template
+````
+<div *ngIf=" user.isLogin && app.user.profile ">
+  {{ app.user.profile.name }}
+</div>
+````
+
+
+### How to know profile is loaded already.
+
+* To use `UserService.profile` safely.
+
+````
+
+  constructor() {
+    this.subscriptionLoadProfile = this.app.user.loadProfile.subscribe(load => {
+      console.log("profile loaded? ", load); // true of false.
+    });
+  }
+
+  ngOnDestroy() {
+    this.subscriptionLoadProfile.unsubscribe();
+  }
+
+````
 
 
 
@@ -301,38 +385,6 @@ So, there is a helper getters.
 * Use `UserService.getProfile()`. It is a safe way.
 
 
-### UserService.getProfile()
-
-This is a safe way to get user profile.
-
-While UserService.loadProfile( uid ) load a user profile, 
-
-     * @note It does not use onAuthStateChanged() since it is not easy to subscribe and unsubscribe.
-     * @note It waits 20s until timeout.
-    
-    
-     * 
-
-component class)
-````
-user.getProfile(profile => this.profile = profile, e => console.error(e));
-````
-
-template
-````
-<div *ngIf=" user.isLogin && profile ">
-  {{ profile.name }}
-</div>
-````
-
-
-Example of getProfile)
-````
-  this.app.user.getProfile(p => this.setProfile(p), e => {
-    if ( isError(e.message, ERROR.user_not_logged_in ) )this.error = "You are not logged in";
-    else this.error = e.message;
-  });
-````
 
 
 ### Best practice with login status or other coding.
@@ -355,14 +407,9 @@ Example of getProfile)
 
 * For instance, if the user is on 'profile' page and refreshes the site, then the app will be in 'pending' while booting.
 
-  * The app will try to get user profile since the user is on 'profile' page BUT the app may be in 'pending'.
-  * So, there will be an error.
-  * To avoid the error, developer can check login status and wait until 'pending' status changes to 'login' or 'logout'.
-  * But this is tedious.
-
-* Use `UserService.checkLogin( loginCallback, logoutCallback, errorCallback )` to know if user has logged in or not.
-
-  * You don't have to worry about 'pending' with `checkLogin` since it will callback after `onAuthStateChanged()`.
+  * If the app tries to get user profile, the app may be in 'pending' state for user login.
+  * So, this may throw an error.
+  * To avoid the error, user `UserService.loadProfile` subscription.
 
 
 
