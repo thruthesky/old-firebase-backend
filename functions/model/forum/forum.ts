@@ -220,13 +220,38 @@ export class Forum extends Base {
         if (this.isEmptyCategory(post)) return ERROR.no_categories;
         return null;
     }
+
+    /**
+     * It does all the extra works that are needed to create a post.
+     *      - category
+     *      - friendly url
+     *
+     * @param post Post data to create
+     */
     async createPost(post: POST): firebase.Promise<any> {
         if (this.checkPost(post)) return this.error(this.checkPost(post));
         if (post.key) return this.error(ERROR.post_key_exists_on_create);
         await this.categoriesExist(post.categories);
         let ref = this.postData().push();
+
+        // check if friendly url exists.
+        // if not exists create one with title.
+        // if exists, create with push-key + title.
+
+        await this.createFriendlyUrl( ref.key, post.subject );
+
         return this.setPostData(ref, post);
     }
+
+    /**
+     * @see README#SEO#Friendly URL
+     * @param pushKey Post push-key
+     * @param subject Post subject
+     */
+    createFriendlyUrl( pushKey, subject ) {
+        if ( ! pushKey ) this.error( ERROR.push_key_empty_on_create_friendly_url );
+    }
+
 
     async editPost(post: POST): firebase.Promise<any> {
         if (this.checkPost(post)) return this.error(this.checkPost(post));
@@ -411,6 +436,10 @@ export class Forum extends Base {
 
 
 
+    /**
+     * Returns a page ( of posts )
+     * @param o Options.
+     */
     page(o) {
         let $ref = this.postData().orderByKey().limitToLast(o.size);
 

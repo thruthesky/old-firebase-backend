@@ -424,3 +424,42 @@ For CRUD of category, realtime update may help. BUT for Showing category only li
 
 Backend as of firebase-backend, only needs `uid` and `secure key` to get the permission/authentication.
 
+
+
+
+
+# SEO
+
+## Friendly URL
+
+* Post subject will become the `post-subject` key that tells which post it is link to.
+* All special spaces will be chagned into dashes(-) and all special characters will be deleted in 'friendly url'.
+
+
+
+Database structure will be:
+````
+`/post/friendly-url/{post-subject: pushkey}`
+````
+
+* If the key of `post-subject` is already exists, then the key will be formed in `post-pushkey-subject`.
+
+  For instance,
+  * If post key is `12345abcde`
+  * If post subject is `hello how are you?`
+
+  Then it will be saved as
+
+````
+/post/friendly-url/hello-how-are-you
+````
+
+* If the same subject is written, then
+
+````
+/post/friendly-url/pushKey-hello-how-are-you
+````
+
+will be created.
+
+

@@ -55,7 +55,8 @@ export const ERROR = {
     response_is_empty: 'response_is_empty',
     permission_denied: 'permission_denied',
     //user_logged_out: 'user_logged_out',
-    user_not_logged_in: 'user_not_logged_in'
+    user_not_logged_in: 'user_not_logged_in',
+    push_key_empty_on_create_friendly_url: 'push_key_empty_on_create_friendly_url'
 };
 
 
