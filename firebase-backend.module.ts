@@ -20,7 +20,7 @@ export { ERROR, isError } from './functions/model/error/error';
 export { CATEGORY, CATEGORIES, POST, POSTS, ALL_CATEGORIES } from './functions/model/forum/forum.interface';
 
 import { UserService } from './functions/model/user/user.service';
-export { UserService, SOCIAL_PROFILE } from './functions/model/user/user.service';
+export { UserService, SOCIAL_PROFILE, USER_REGISTER, USER_UPDATE } from './functions/model/user/user.service';
 
 @NgModule({
     providers: [ ForumService, UserService, ApiService, TestService ],

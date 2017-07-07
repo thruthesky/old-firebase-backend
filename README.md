@@ -180,14 +180,98 @@ So, it is very secure to use `3rd Party Social id` as the Firebase user id(email
 
 
 
+
+## loginUser
+
+It holds `login user's firebase User object`. Not profile data.
+
+
+
+* `UserService.loginUser` is set when
+  * User registers with Email/Password.
+  * Email/Password login with `UserService.login()` is invoked
+  * All social login was made.
+
+
+
+* `loginUser` may different from `auth.currentUser`
+  * If a user;
+      * registers with `createUserWithEmailAndPassword()`,
+      * or logs in with `UserService.login()` as Email/Password login,
+      * or logs in with Social Service,
+        * the user object returned from the login method will be set to `loginUser`.
+        * This is not `currentUser`.
+  * and later when `onAuthStateChanged()` is called, the returned current user object will be set to `loginUser`. 
+  * So, `loginUser` is set twice and the first
+  this may be different from `auth.currentUser`
+
+
+
+
 ## Profile
 
-Every time a user logs in, his profile data will be updated by his social profile data. BUT other profile data like phone number will not be overwritten.
+User's profile data is saved on `/user/profile` and this node will be updated( NOT reset) when the user updates his profile on profile page.
 
-So, all user shall have a node under `/user/profile`.
-And that node will be updated( NOT reset) when the user updates his profile on profile page.
+Every time a user has auth with `onAuthStateChanged()`, the user's profile data will be updated by the user's social profile data.
+( Profile data like phone number will not be overwritten )
+
+After login/register, it takes some time for the profile to be loaded and if you are going to use it in template, it may display nothing until the profile is completely loaded.
+
+  * This mean, even if `UserService.isLogin` is true, profile data may not be loaded yet.
+
+  * For instance, when a user freshes a page in profile page,
+    * while `.isLogin` is true, but `.profile` will still be loading.
+    * App can ask user to visit main page and visit the profile page agin.
+````
+if ( ! this.app.user.profile.email ) this.app.go('/', "You are visiting this page with wrong route. Go main page and visit here again.");
+````
+
+* `UserService.profile` is set to empty object '{}' when the user is not logged in(and the profile is not loadded) which means that, refering {{ app.user.profile.name }} will not produce error.
 
 
+
+### UserService.getProfile()
+
+* It gets user profile data from `/user/profile/` based on the `loginUser.uid`. So, if the user has not logged in, there might an error. So, 'loginUser' must be set before this method.
+* And sets the user profile data to `UserService.profile` property.
+* And re-render page, ngZone.run(), to refresh/update the user profile information into view.
+
+component class) To get/load user profile data from database.
+
+````
+user.getProfile()
+  .then( profile => {} )
+  .catch( e => {
+    if ( isError(e.message, ERROR.user_not_logged_in ) )this.error = "You are not logged in";
+    else this.error = e.message;
+  });
+````
+
+template
+````
+<div *ngIf=" user.isLogin && app.user.profile ">
+  {{ app.user.profile.name }}
+</div>
+````
+
+
+### How to know profile is loaded already.
+
+* To use `UserService.profile` safely.
+
+````
+
+  constructor() {
+    this.subscriptionLoadProfile = this.app.user.loadProfile.subscribe(load => {
+      console.log("profile loaded? ", load); // true of false.
+    });
+  }
+
+  ngOnDestroy() {
+    this.subscriptionLoadProfile.unsubscribe();
+  }
+
+````
 
 
 
@@ -236,11 +320,17 @@ Secret key is very important key and only readable by the owned-user.
 ### Login Flow
 
 * facebook login click => app.loggedIn() => wait with onAuthStateChanged() until login => user.updateProfile()
-* kakao login click => kakao.Auth.login() success => app.thirdPartySocialLoginSuccessHandler() => app.emailLogin() => [ If login failed app.emailRegister ] => app.loggedIn() => wait with onAuthStateChanged() until login => user.updateProfile()
+* kakao login click => kakao.Auth.login() success => app.thirdPartySocialLoginSuccessHandler()
+  => app.socialFirebaseEmailLogin() => [ If login failed app.app.socialFirebaseEmailRegister ] => app.socialLoggedIn()
+  => user.updateProfile()
 
 * Go to profile page => user.getProfile() => Display user information.
 * Profile form submit => user.updateProfile()
 
+
+### Secret code creation flow
+
+* Login or Registration => onAuthStateChanged() ( => if the user has no secret? then create one ) => get secret key.
 
 
 
@@ -287,33 +377,14 @@ So, there is a helper getters.
 
 * Attention: Use `.isLogin`, `.isLogout`, `.isPending` to check user login status.
   * If you are going to use in other way around like
-    * `UserSerivce.getProfile( p => this.profile = p)` and use it to check if the user login in template, that's a mistake.
+    * using `UserSerivce.profile` and in template to see if the user logged in/out is a mistake.
     Because you can logout, and `this.profile` still have a value. It is not easy write 100% clean code.
 
-* If you need to use user's profile data in template, keep it in mind that profile data may not be available until app completes the socket connection from database.
+* If you need to use user's profile data in template, keep it in mind that profile data may not be available until the app completes `onAuthStateChanged()` (the socket connection) from database.
 
-so, code like below
-
-component class)
-````
-user.getProfile(profile => this.profile = profile, e => console.error(e));
-````
-
-template
-````
-<div *ngIf=" user.isLogin && profile ">
-  {{ profile.name }}
-</div>
-````
+* Use `UserService.getProfile()`. It is a safe way.
 
 
-Example of getProfile)
-````
-  this.app.user.getProfile(p => this.setProfile(p), e => {
-    if ( isError(e.message, ERROR.user_not_logged_in ) )this.error = "You are not logged in";
-    else this.error = e.message;
-  });
-````
 
 
 ### Best practice with login status or other coding.
@@ -336,15 +407,20 @@ Example of getProfile)
 
 * For instance, if the user is on 'profile' page and refreshes the site, then the app will be in 'pending' while booting.
 
-  * The app will try to get user profile since the user is on 'profile' page BUT the app may be in 'pending'.
-  * So, there will be an error.
-  * To avoid the error, developer can check login status and wait until 'pending' status changes to 'login' or 'logout'.
-  * But this is tedious.
+  * If the app tries to get user profile, the app may be in 'pending' state for user login.
+  * So, this may throw an error.
+  * To avoid the error, user `UserService.loadProfile` subscription.
 
-* Use `UserService.checkLogin( loginCallback, logoutCallback, errorCallback )` to know if user has logged in or not.
 
-  * You don't have to worry about 'pending' with `checkLogin` since it will callback after `onAuthStateChanged()`.
 
+Recommended way to check user profile)
+
+````
+<div *ngIf=" app.user.profile ">
+  Welcome, {{ app.user.profile.name }} ( {{ app.user.profile.photoURL }})<br>
+  Am i admin? : {{ app.user.isAdmin }}
+</div>
+````
 
 
 
@@ -420,7 +496,38 @@ For CRUD of category, realtime update may help. BUT for Showing category only li
 
 # TEST
 
-# TEST Authentication
+## How to setup test evnvironment.
+
+### TEST on CLI
+
+Developer can run test code on CLI.
+
+* Edit ./firebase-backend/test.ts
+* Run `tsc`
+* Run `node test`
+
+
+### TEST on cliend-end with Anuglar in Browser.
+
+For some test like Firebase email/password registraion, should be done in client-end.
+
+
+Developer can;
+
+* Edit ./firebase-backend/functions/model/test/test.ts
+* Inject the TestService
+* Invoke `TestServer::run()`
+
+
+
+### Other test method.
+
+* You can test 
+
+
+
+
+## TEST Authentication
 
 Backend as of firebase-backend, only needs `uid` and `secure key` to get the permission/authentication.
 
@@ -463,5 +570,18 @@ Database structure will be:
 will be created.
 
 * If the subject is empty, then push-key will be used as friendly url.
+
+
+# Error Handling
+
+To make it simple, all error is a string which is called 'error code'.
+
+When error is return from api, you can ignore error.message on front end.
+
+When an Error object is thrown, the 'message' property will have its error code.
+
+'error code' without 'error message' or extra information may make debug diffcult but extremely simple to handle.
+
+
 
 

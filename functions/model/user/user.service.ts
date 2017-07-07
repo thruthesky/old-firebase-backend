@@ -1,8 +1,9 @@
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import * as firebase from 'firebase';
-import { Observable } from 'rxjs/Observable';
-import 'rxjs/add/observable/fromPromise';
-import 'rxjs/add/observable/throw';
+// import { Observable } from 'rxjs/Observable';
+import { BehaviorSubject } from 'rxjs/BehaviorSubject';
+// import 'rxjs/add/observable/fromPromise';
+// import 'rxjs/add/observable/throw';
 
 import { ERROR } from './../error/error';
 
@@ -12,27 +13,34 @@ import { SECRET_KEY_PATH, PROFILE_PATH, PROFILE_KEY } from './../../define';
 import { Base } from './../base/base';
 
 
+/**
+ * This is user common data. This data structure has the same strcuture of database - /user/profile
+ */
+interface EMAIL {
+    email: string;              // this cannot be optional.
+}
+
+interface PASSWORD {
+    password: string;
+}
+
+interface USER_COMMON_DATA {
+    providerId?: string;
+    name?: string;              // displayName
+    photoURL?: string;
+    gender?: string;
+    birthday?: string;
+    mobile?: string;
+}
 
 
 
-// export interface USER_REGISTER {
-//     email: string;
-//     password: string;
-//     displayName: string;
-//     photoUrl: string;
-// }
+export interface USER_REGISTER extends EMAIL, PASSWORD, USER_COMMON_DATA { }
+export interface USER_UPDATE extends USER_COMMON_DATA { };
 
-// export interface USER_REGISTER_RESONSE {
-// }
-
-
-export interface SOCIAL_PROFILE {
-    providerId: string;
-    name: string;               // displayName
+export interface SOCIAL_PROFILE extends EMAIL, USER_COMMON_DATA {
     uid: string;
-    email: string;
     password?: string;
-    photoURL: string;
 }
 
 @Injectable()
@@ -42,9 +50,14 @@ export class UserService extends Base {
     root: firebase.database.Reference;
 
     /**
-     * 
+     * @see #loginUser
      */
-    profile = null;
+    loginUser: firebase.User | null = void 0;
+
+    /**
+     * User profile data
+     */
+    profile: USER_COMMON_DATA = <USER_COMMON_DATA>{};
     secretKey: string;
     /**
      * if user logged in, it will become 'login'.
@@ -52,14 +65,22 @@ export class UserService extends Base {
      * if app does not know and try to get user login status, then it will become 'pending'.
      * By default ( initially ), it is pending (when the app is loaded for the first time )
      */
-    loginStatus: 'pending' | 'login' | 'logout' = 'pending';
+    // loginStatus: 'pending' | 'login' | 'logout' = 'pending';
+
+    /**
+     * getProfile() signaller.
+     */
+    loadProfile = new BehaviorSubject<boolean>(false);
+
+    /**
+     * 
+     */
     constructor(
+        private ngZone: NgZone
     ) {
         super();
         this.root = firebase.database().ref('/');
         this.auth = firebase.auth();
-
-
 
         /**
          * For login and admin check.
@@ -67,9 +88,10 @@ export class UserService extends Base {
         this.auth.onAuthStateChanged((user: firebase.User) => {
             console.log("UserService::onAuthStateChanged()");
             if (user) {
-                this.loginStatus = 'login'; /// this must come first before anything else.
+                this.loginUser = user;
+                // this.loginStatus = 'login'; /// this must come first before anything else.
                 console.log("UserService::onAuthStateChanged() => logged-in: ", user.uid);
-                console.log("loginStatus: ", this.loginStatus);
+                // console.log("loginStatus: ", this.loginStatus);
 
                 this.getOrGenerateSecretKey()
                     .then(key => {
@@ -77,12 +99,14 @@ export class UserService extends Base {
                         this.secretKey = key;
                     })
                     .catch(e => console.error(e));
-                this.getProfile(() => {}, e => console.error(e));
+                // this.loadProfile(() => { }, e => console.error(e));
+                this.getProfile().catch(e => console.error(e));
             }
             else {
-                this.loginStatus = 'logout';
+                this.loginUser = null;
+                // this.loginStatus = 'logout';
                 console.log("UserService::onAuthStateChanged() => logged-out");
-                this.profile = null;
+                this.profile = {};
             }
             this.checkAdmin();
         });
@@ -90,6 +114,19 @@ export class UserService extends Base {
     }
 
 
+    /**
+     * Sets loginUser and returns it.
+     * @param user firebase.User
+     * 
+     * @code
+     *      let user = this.app.user.setLoginUser( res.user );
+     * @endcode
+     * 
+     */
+    setLoginUser(user: firebase.User | null): firebase.User {
+        this.loginUser = user;
+        return this.loginUser;
+    }
 
 
     /**
@@ -97,7 +134,7 @@ export class UserService extends Base {
      */
     get uid() {
         // console.log( 'uid() this.isLogged: ', this.isLogged);
-        if (this.isLogin) return this.auth.currentUser.uid;
+        if (this.loginUser) return this.loginUser.uid;
     }
     get key() {
         return this.uid;
@@ -124,11 +161,68 @@ export class UserService extends Base {
 
     /**
      * 
-     * @param data 
+     * Registers with email/password and sets user profile data.
+     * 
+     * @note This sets loginUser
+     * @param data User registration data
+     * @return a promise with uid.
+     * @example @see test code.
      */
-    // create(data: USER_REGISTER): Promise<firebase.User> {
-    //     return <Promise<firebase.User>><any>this.auth.createUserWithEmailAndPassword(data.email, data.password);
+    register(data: USER_REGISTER): firebase.Promise<any> {
+
+
+        // return Promise.resolve(firebase.auth().createUserWithEmailAndPassword(data.email, data.password)).catch(e => console.log(e))
+
+        console.log(data);
+
+        if (!data['email']) return this.error(ERROR.register_email_is_empty);
+        if (!data['password']) return this.error(ERROR.register_password_is_empty);
+        return this.auth.createUserWithEmailAndPassword(data.email, data.password)
+            .then((user: firebase.User) => {
+                this.setLoginUser(user);
+                return this.updateProfile(data);
+            })
+            .then(() => {
+                return this.uid;
+            })
+            .catch(e => {
+                console.log("Caught in register: ", e['code'], e.message);
+                switch (e['code']) {
+                    case 'auth/weak-password': return this.error(ERROR.auth_weak_password);
+                    case 'auth/email-already-in-use': return this.error(ERROR.auth_email_already_in_use);
+                    case 'auth/invalid-email': return this.error(ERROR.auth_invalid_email);
+                    case 'auth/operation-not-allowed': return this.error(ERROR.auth_operation_not_allowed);
+                    default:
+                        console.log(e);
+                        if (e['message']) return this.error(e['message']);
+                        else return this.error(ERROR.firebase_auth_unknown_error);
+                }
+            });
+
+    }
+
+
+
+    /**
+     * 
+     * 
+     * @note This sets loginUser
+     * 
+     * @param email 
+     * @param password
+     * @return A promise with UserService.loginUser 
+     */
+    login(email: string, password: string): firebase.Promise<any> {
+        return firebase.auth().signInWithEmailAndPassword(email, password)
+            .then(user => this.setLoginUser(user));
+    }
+
+    // register(email: string, password: string): firebase.Promise<any> {
+    //     return firebase.auth().createUserWithEmailAndPassword(email, password)
     // }
+
+
+
 
     // update(user: firebase.User, data: USER_REGISTER ) : firebase.Promise<void> {
     //     return user.updateProfile({
@@ -156,6 +250,10 @@ export class UserService extends Base {
     // }
 
 
+    /**
+     * @note This does not set loginUser.
+     * @note onAuthStateChanged() will set it.
+     */
     logout() {
         this.auth.signOut().then(() => {
             console.log("sign out ok");
@@ -185,32 +283,35 @@ export class UserService extends Base {
      * 
      */
     get isLogout(): boolean {
-        return this.loginStatus == 'logout';
+        return this.loginUser === null;
     }
 
     get isLogin(): boolean {
+        return !!this.loginUser;
+
         // return this.loginStatus == 'login';
-        if (this.loginStatus == 'login') {
-            if (this.auth.currentUser === void 0) return false;
-            else {
-                if ( this.auth.currentUser ) {
-                    //console.log("yes auth.currentUser has value");
-                    return true;
-                }
-                else {
-                    //console.log("No. currentUser is null");
-                    return false;
-                }
-            }
-        }
-        else return false;
+        //     if (this.loginStatus == 'login') {
+        //         if (this.auth.currentUser === void 0) return false;
+        //         else {
+        //             if (this.auth.currentUser) {
+        //                 //console.log("yes auth.currentUser has value");
+        //                 return true;
+        //             }
+        //             else {
+        //                 //console.log("No. currentUser is null");
+        //                 return false;
+        //             }
+        //         }
+        //     }
+        //     else return false;
     }
 
     /**
      * Is the user not logged in? and Is the user is not logged out?
      */
     get isPending(): boolean {
-        return this.loginStatus == 'pending';
+        return this.loginUser === void 0;
+        // return this.loginStatus == 'pending';
     }
 
 
@@ -262,30 +363,27 @@ export class UserService extends Base {
 
 
 
-    login(email: string, password: string): firebase.Promise<any> {
-        return firebase.auth().signInWithEmailAndPassword(email, password);
-    }
-
-    register(email: string, password: string): firebase.Promise<any> {
-        return firebase.auth().createUserWithEmailAndPassword(email, password)
-    }
-
-
-
     /**
      * It updates user prifle.
      * 
      * @note it does not set whole profile. It only updates partly.
+     * @note this is being called by register() and profile.ts
+     *
      * 
      * @see readme#Profile
      * @param user 
      * @param callback Callback function
+     * 
+     * @code
+     * @code
      */
     updateProfile(profileData): firebase.Promise<any> {
         // console.log("Going to update user profile: user logged? ", this.isLogin);
-        if (profileData.password !== void 0) delete profileData.password;
-        profileData = this.trimObject(profileData);
-        return this.root.child(PROFILE_PATH).child(this.uid).update(profileData);
+        let data = Object.assign({}, profileData);
+        if (data.password !== void 0) delete data.password;
+        data = this.trimObject(data);
+        console.log("updateProfile of " + this.uid + ", with: ", data);
+        return this.root.child(PROFILE_PATH).child(this.uid).update(data);
     }
 
 
@@ -340,46 +438,19 @@ export class UserService extends Base {
 
 
 
-    /**
-     * Gets logged user's profile data.
-     * 
-     * 
-     * 
-     * @note This is a safe way to get user profile.
-     * @note It uses onAuthStateChanged() to make sure that the user logged in.
-     * @note This works as callback since firebase.auth.onAuthStateChanged() is not based on promise.
-     * 
-     * @code
-     *      
-     * @endcode
-     *
-     * 
-     * @param success Success callback with profile data.
-     * @param error Error call back with Error
-     */
-    getProfile(success: (profile) => void, error: (e) => void): void {
-        this.auth.onAuthStateChanged(user => {
-            if (user) {
-                this.loadProfile(user.uid)
-                    .then( p => {
-                        this.profile = p;
-                        success( p );
-                    })
-                    .catch(error);
-            }
-            else error(new Error(ERROR.user_not_logged_in));
-        }, e => error(e));
-    }
-
 
     /**
      * 
-     * Loads a user profile data from database and Returns it with Promise.
+     * Loads a user profile data from database.
+     *      - And call 'success' callback with 'profile'.
      * 
-     * @note it needs user uid.
+     * @warning Admin may load other user's profile data. ( The profile data is protected by Rules, though. )
      * 
-     * @param uid User uid
-     * @return Promise with user profile.
+     * 
+     * @attension Do not use this method in class component or template since it uses setTimeout() it is not a good one.
+     * @attention UserService::constructor() is the only place where this method is being invoked.
+     * @note use getProfile() when you need to user profile.
+     * 
      * 
      * @code
                 app.user.auth.onAuthStateChanged( user => {
@@ -387,11 +458,49 @@ export class UserService extends Base {
                 });
      * @endcode
      */
-    loadProfile(uid): firebase.Promise<any> {
-        return this.root.child(PROFILE_PATH).child(uid).once('value')
+    // private loadProfileCount = 0;
+    // loadProfile(success: (profile) => void, error: (e) => void): void {
+    //     if (this.isPending) {
+    //         console.log("getProfile() pending count: ", this.loadProfileCount);
+    //         if (this.loadProfileCount++ > 200) return error(new Error(ERROR.timeout));
+    //         else setTimeout(() => this.loadProfile(success, error), 100);
+    //     }
+    //     else {
+    //         if (this.isLogin) {
+    //             this.getProfile()
+    //                 .then(p => {
+    //                     success(p);
+    //                 })
+    //                 .catch(error);
+    //         }
+    //         else {
+    //             error(new Error(ERROR.user_not_logged_in));
+    //         }
+    //     }
+    // }
+
+
+
+    /**
+     * Gets logged user's profile data.
+     * 
+     * @see readme#getProfile
+     * 
+     * 
+     */
+    getProfile(): firebase.Promise<any> {
+        if ( ! this.uid ) return this.error( ERROR.user_not_logged_in );
+        return this.root.child(PROFILE_PATH).child(this.uid).once('value')
             .then(snap => {
                 let profile = snap.val();
                 if (!profile) profile = {};
+                this.profile = profile;
+                this.loadProfile.next( true );
+                console.log("got profile: ", this.profile);
+                /// Getting user profile data is changing the app's internal state. But the change does not update view immediately.
+                /// So, it re-render Zone again.
+                /// @note it may still take some time because of the handshaking between the app and firebase database for getting profile data.
+                this.ngZone.run(() => { });
                 return profile;
             });
     }

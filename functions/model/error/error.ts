@@ -18,10 +18,10 @@
  * 
  * @endcode
  */
-export function isError( code: string, compare_code?: string ) : boolean {
-    if ( ! code ) return false;
-    if ( ERROR[code] === void 0 ) return false;
-    if ( compare_code ) return code == compare_code;
+export function isError(code: string, compare_code?: string): boolean {
+    if (!code) return false;
+    if (ERROR[code] === void 0) return false;
+    if (compare_code) return code == compare_code;
     else return true;
 }
 
@@ -36,7 +36,7 @@ export const ERROR = {
     category_id_empty: 'category_id_empty',
     post_key_empty: 'post_key_empty',
     post_key_exists_on_create: 'post_key_exists_on_create',
-    malformed_key:'malformed_key',
+    malformed_key: 'malformed_key',
     no_categories: 'no_categories',
     category_exists: 'category_exists',
     category_not_exist: 'category_not_exist',
@@ -56,8 +56,17 @@ export const ERROR = {
     permission_denied: 'permission_denied',
     //user_logged_out: 'user_logged_out',
     user_not_logged_in: 'user_not_logged_in',
+
     //post_subject_is_empty_on_creating_friendly_url: 'post_subject_is_empty_on_creating_friendly_url',
-    push_key_empty_on_creating_friendly_url: 'push_key_empty_on_creating_friendly_url'
+    push_key_empty_on_creating_friendly_url: 'push_key_empty_on_creating_friendly_url',
+
+    auth_weak_password: 'auth/weak-password',
+    auth_email_already_in_use: 'auth/email-already-in-use',
+    auth_invalid_email: 'auth/invalid-email',
+    auth_operation_not_allowed: 'auth/operation-not-allowed',
+    firebase_auth_unknown_error: 'firebase_auth_unknown_error',
+    register_email_is_empty: 'register_email_is_empty',
+    register_password_is_empty: 'register_password_is_empty'
 };
 
 

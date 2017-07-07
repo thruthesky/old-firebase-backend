@@ -346,7 +346,7 @@ class AppTest {
         // this.expect( post.subject, 'hi', "Success getPostData()");
         this.expect(p.categories.length, 1, "getPostData() success with: " + JSON.stringify(p));
         this.expect(p.categories[0], 'abc', "category match");
-        this.forum.categoryPostRelation.child(p.categories[0]).child(p.key).once('value')
+        this.forum.categoryPostRelation().child(p.categories[0]).child(p.key).once('value')
           .then(s => this.expect(s.val(), true, "Post exists under " + p.categories[0] + " category !!"))
       })
       .catch(e => this.error("getPostData() failed with key: " + key));
@@ -380,9 +380,9 @@ class AppTest {
       .then(key => {
         this.success("Post edit with different categroy success.");
         this.forum.getPostData(key).then((p: POST) => {
-          this.forum.categoryPostRelation.child('flower').child(p.key).once('value')
+          this.forum.categoryPostRelation().child('flower').child(p.key).once('value')
             .then(s => this.expect(s.val(), true, "Post exists under flower category !!"));
-          this.forum.categoryPostRelation.child('abc').child(p.key).once('value')
+          this.forum.categoryPostRelation().child('abc').child(p.key).once('value')
             .then(s => this.expect(s.val(), null, "Post does not exist under abc category !!"));
 
         });
@@ -396,9 +396,9 @@ class AppTest {
       .then(key => {
         this.success("Post edit with different categroy success.");
         this.forum.getPostData(key).then((p: POST) => {
-          this.forum.categoryPostRelation.child('flower').child(p.key).once('value')
+          this.forum.categoryPostRelation().child('flower').child(p.key).once('value')
             .then(s => this.expect(s.val(), true, "Post exists under flower category !!"));
-          this.forum.categoryPostRelation.child('abc').child(p.key).once('value')
+          this.forum.categoryPostRelation().child('abc').child(p.key).once('value')
             .then(s => this.expect(s.val(), true, "Post exists under abc category !!"));
         });
       })
@@ -563,9 +563,9 @@ class AppTest {
           this.expect(p.content, post.content, "Content edit with postApi(function:eidt) success.");
 
 
-          this.forum.categoryPostRelation.child('flower').child(p.key).once('value')
+          this.forum.categoryPostRelation().child('flower').child(p.key).once('value')
             .then(s => this.expect(s.val(), null, "Post does not exist under flower category !!"));
-          this.forum.categoryPostRelation.child('abc').child(p.key).once('value')
+          this.forum.categoryPostRelation().child('abc').child(p.key).once('value')
             .then(s => this.expect(s.val(), true, "Post exists under abc category !!"));
 
         })
