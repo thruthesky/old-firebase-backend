@@ -56,7 +56,8 @@ export const ERROR = {
     permission_denied: 'permission_denied',
     //user_logged_out: 'user_logged_out',
     user_not_logged_in: 'user_not_logged_in',
-    push_key_empty_on_create_friendly_url: 'push_key_empty_on_create_friendly_url'
+    //post_subject_is_empty_on_creating_friendly_url: 'post_subject_is_empty_on_creating_friendly_url',
+    push_key_empty_on_creating_friendly_url: 'push_key_empty_on_creating_friendly_url'
 };
 
 

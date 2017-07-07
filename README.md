@@ -462,4 +462,6 @@ Database structure will be:
 
 will be created.
 
+* If the subject is empty, then push-key will be used as friendly url.
+
 

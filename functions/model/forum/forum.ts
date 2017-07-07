@@ -4,7 +4,8 @@ import { ERROR } from '../error/error';
 
 import {
     CATEGORY_PATH, CATEGORY, CATEGORIES, POST,
-    POST_DATA_PATH, CATEGORY_POST_RELATION_PATH, ALL_CATEGORIES
+    POST_DATA_PATH, CATEGORY_POST_RELATION_PATH, ALL_CATEGORIES,
+    POST_FRIENDLY_URL_PATH
 } from './forum.interface';
 
 
@@ -238,8 +239,9 @@ export class Forum extends Base {
         // if not exists create one with title.
         // if exists, create with push-key + title.
 
-        await this.createFriendlyUrl( ref.key, post.subject );
-
+        let friendlyUrlKey = await this.createFriendlyUrl( ref.key, post.subject );
+        
+        post.friendly_url = friendlyUrlKey;
         return this.setPostData(ref, post);
     }
 
@@ -248,9 +250,32 @@ export class Forum extends Base {
      * @param pushKey Post push-key
      * @param subject Post subject
      */
-    createFriendlyUrl( pushKey, subject ) {
-        if ( ! pushKey ) this.error( ERROR.push_key_empty_on_create_friendly_url );
+    createFriendlyUrl( pushKey, subject ) : firebase.Promise<any> {
+        if ( ! pushKey ) return this.error( ERROR.push_key_empty_on_creating_friendly_url );
+        //// if ( ! subject ) return this.error( ERROR.post_subject_is_empty_on_creating_friendly_url );
+        ////....
+
+        if ( subject ) subject = this.convertFriendlyUrlString(subject);
+        else subject = pushKey;
+
+        return this.postFriendlyUrl.child( subject ).once('value')
+            .then( snap => {
+                let friendlyUrlkey;
+                if ( snap.val() ) friendlyUrlkey = pushKey + '-' + subject;
+                else friendlyUrlkey = subject;
+                return this.postFriendlyUrl.child( friendlyUrlkey ).set( pushKey )
+                    .then( () => friendlyUrlkey );
+            })
     }
+    convertFriendlyUrlString( subject ) {
+        let ns = subject.replace(/[`~!@#$%^&*()_|+ =?;:'",.<>\{\}\[\]\\\/]/gm, '-');
+        ns = ns.replace(/^\-+/gm, '');
+        if ( ns ) ns = ns.replace(/\-+$/gm, '');
+        if ( ns ) ns = ns.replace(/\-+/gm, '-');
+        return ns;
+    }
+
+
 
 
     async editPost(post: POST): firebase.Promise<any> {
@@ -470,6 +495,15 @@ export class Forum extends Base {
         return this.path(CATEGORY_PATH);
     }
 
+    get categoryPostRelation(): firebase.database.Reference {
+        return this.root.ref.child(this.categoryPostRelationPath);
+    }
+    get categoryPostRelationPath(): string {
+        return this.path(CATEGORY_POST_RELATION_PATH);
+    }
+
+
+
 
     postData(key?: string): firebase.database.Reference {
         if (this.isEmpty(key)) return this.root.ref.child(this.postDataPath);
@@ -478,13 +512,12 @@ export class Forum extends Base {
     get postDataPath(): string {
         return this.path(POST_DATA_PATH);
     }
-    get categoryPostRelation(): firebase.database.Reference {
-        return this.root.ref.child(this.categoryPostRelationPath);
-    }
-    get categoryPostRelationPath(): string {
-        return this.path(CATEGORY_POST_RELATION_PATH);
+
+    get postFriendlyUrl() : firebase.database.Reference {
+        return this.root.child( POST_FRIENDLY_URL_PATH );
     }
 
+    
 
 
     path(p: string) {

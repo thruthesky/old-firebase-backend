@@ -43,7 +43,7 @@ class AppTest {
   constructor() {
     this.root = db.ref('/');
     this.forum = new Forum();
-    this.forum.setRoot( this.root );
+    this.forum.setRoot(this.root);
     this.run();
   }
 
@@ -56,12 +56,14 @@ class AppTest {
     await this.testIDFormat();
     await this.testMethods();
     await this.testCategory();
+    await this.testCreateAPost();
     await this.testPost();
     await this.testPostApi();
+    await this.testFriendlyUrl();
 
     setTimeout(() => {
       console.log(`Tests: ${this.successCount + this.errorCount}, successes: ${this.successCount}, errors: ${this.errorCount}`);
-    }, 2000);
+    }, 1000);
 
   }
 
@@ -266,9 +268,32 @@ class AppTest {
   }
 
 
+  /**
+   * 
+   * Creates a post and returns its created data.
+   * 
+   * @param category 
+   * @param subject 
+   * @param uid 
+   * @param secret 
+   */
+  async testCreateAPost(category="abc", subject=" e~ Hhem... This is subject. ^^; ", uid="This-is-uid", secret="This-is-secreit") {
+    /// post create and get
+    let post: POST = { secret: secret, uid: uid, categories: [ category ], subject: subject };
+    let key = await this.forum.createPost(post).catch( e => this.error("Post should be created => " + e.message));
+    let p = await this.forum.getPostData(key)
+      .catch(e => this.error("getPostData() failed with key: " + key));
+    return p;
+  }
+
+
   async testPost() {
 
     console.log("\n =========================== testPost() =========================== ");
+
+  
+    let p = await this.testCreateAPost( 'abc', '' );
+    this.test( p.key, "Post with empty subject has been created with key: " + p.key );
 
     let re;
 
@@ -464,7 +489,7 @@ class AppTest {
       uid: this.userA.uid,
       secret: this.userA.secret
     })
-      .then(() => { this.error("wrong function name must fail.")})
+      .then(() => { this.error("wrong function name must fail.") })
       .catch(e => this.expect(e.message, ERROR.unknown_function, 'Wrong function name test'));
 
 
@@ -580,9 +605,9 @@ class AppTest {
       .then(() => this.success(`delete success`))
       .catch(e => this.error(`'delete' failed`));
 
-    await this.forum.getPostData( post.key )
+    await this.forum.getPostData(post.key)
       .then(() => this.error('post was not deleted'))
-      .catch( e => this.expect( e.message, ERROR.post_not_found_by_that_key, 'post poroperly deleted'))
+      .catch(e => this.expect(e.message, ERROR.post_not_found_by_that_key, 'post poroperly deleted'))
 
 
 
@@ -591,6 +616,20 @@ class AppTest {
 
     // post CRUD by admin.
 
+  }
+
+
+  async testFriendlyUrl() {
+
+    let subject = " #프랜들리, 유알엘을, 테스트합니다 ^^; " + this.forum.randomString();
+    let friendlySubject = this.forum.convertFriendlyUrlString( subject );
+
+    let simple: POST = await this.testCreateAPost("abc", subject);
+    this.expect( simple.friendly_url, friendlySubject, "Post created with friendly url: ");
+
+    let again: POST = await this.testCreateAPost( "abc", subject);
+    this.expect( again.friendly_url, again.key + '-' + friendlySubject, "Post created with friendly url: ");
+    
   }
 
 
@@ -657,9 +696,12 @@ class AppTest {
   }
 
   expect(a, b, m) {
-    // console.log("a:", a, "b:", b);
-    if (a == b) this.success(m + ' ===> a: ' + a + ', b: ' + b);
+    if (a === b) this.success(m + ' ===> a: ' + a + ', b: ' + b);
     else this.error(m + ', a: ' + a + ', b: ' + b);
+  }
+  test(a, m) {
+    if (a) this.success(m);
+    else this.error(m);
   }
 
 

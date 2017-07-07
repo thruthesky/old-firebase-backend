@@ -4,6 +4,7 @@
 
 export const CATEGORY_PATH = 'forum/category';
 export const POST_DATA_PATH = 'forum/post/data';
+export const POST_FRIENDLY_URL_PATH = 'forum/post/friendly-url';
 export const CATEGORY_POST_RELATION_PATH = 'forum/category-post-relation';
 export const ALL_CATEGORIES = 'all-categories';
 
@@ -42,7 +43,8 @@ interface POST_COMMON {
     stamp?: number;
 
 
-    date?: string;                   /// this is not exist in database.
+    date?: string;                      /// this is not exist in database.
+    friendly_url?: string;              /// friendly url.
 }
 
 // export interface POST_CREATE extends REQUEST, UID, CATEGORIES, POST_COMMON {};
