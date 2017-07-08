@@ -41,13 +41,15 @@ interface POST_COMMON {
     sticky_forum?: boolean;
     sticky_all_forum?: boolean;
     stamp?: number;
+    friendly_url?: string;              /// friendly url.
+    files?: Array<string>;              /// upload file information.
 
 
     date?: string;                      /// this is not exist in database.
-    friendly_url?: string;              /// friendly url.
+
 }
 
 // export interface POST_CREATE extends REQUEST, UID, CATEGORIES, POST_COMMON {};
 // export interface POST_EDIT extends POST_CREATE, KEY {};
-export interface POST extends REQUEST, UID, KEY, CATEGORIES, POST_COMMON {};
+export interface POST extends REQUEST, UID, KEY, CATEGORIES, POST_COMMON { };
 export type POSTS = Array<POST>;

@@ -168,7 +168,7 @@ export class Forum extends Base {
         return this.category().once('value').then(snapshot => {
             //console.log(snapshot.val());
             let val = snapshot.val();
-            if ( val === null ) return this.error( ERROR.no_category_exists_while_get_categories );
+            if (val === null) return this.error(ERROR.no_category_exists_while_get_categories);
             for (let k of Object.keys(val)) {
                 let v = val[k];
                 //console.log(v);
@@ -261,6 +261,11 @@ export class Forum extends Base {
                     .then(() => friendlyUrlkey);
             })
     }
+
+    /**
+     * Returns safe string for friendly url.
+     * @param subject 
+     */
     convertFriendlyUrlString(subject) {
         let ns = subject.replace(/[`~!@#$%^&*()_|+ =?;:'",.<>\{\}\[\]\\\/]/gm, '-');
         ns = ns.replace(/^\-+/gm, '');
@@ -561,18 +566,6 @@ export class Forum extends Base {
 
 
 
-    ////////////////////////////////////
-    ///
-    ///     FILE UPLOAD
-    ///
-    ////////////////////////////////////
-
-
-
-    upload( filename, data, success, error, percentage ) {
-        let root = firebase.storage().ref();
-        let uploadTask = root.child('upload/');
-    }
 
 
     ////////////////////////////////////
@@ -643,7 +636,7 @@ export class Forum extends Base {
                     let key = snap.key;
                     let post = snap.val();
                     // console.log("post: ", post);
-                    
+
 
                     let siteName = "SONUB";
                     let title = "";
@@ -653,7 +646,7 @@ export class Forum extends Base {
                     let image = "";
                     let url = "";
 
-                    if ( post === null ) {
+                    if (post === null) {
                         /// error. just redirect to home page.
 
                     }

@@ -68,7 +68,8 @@ export const ERROR = {
     firebase_auth_unknown_error: 'firebase_auth_unknown_error',
     register_email_is_empty: 'register_email_is_empty',
     register_password_is_empty: 'register_password_is_empty',
-    no_category_exists_while_get_categories: 'no_category_exists_while_get_categories'
+    no_category_exists_while_get_categories: 'no_category_exists_while_get_categories',
+    no_data_on_file_upload: 'no_data_on_file_upload'
 };
 
 
