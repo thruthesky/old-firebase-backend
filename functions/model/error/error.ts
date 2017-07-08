@@ -59,6 +59,7 @@ export const ERROR = {
 
     //post_subject_is_empty_on_creating_friendly_url: 'post_subject_is_empty_on_creating_friendly_url',
     push_key_empty_on_creating_friendly_url: 'push_key_empty_on_creating_friendly_url',
+    friendly_url_push_key_does_not_exists: 'friendly_url_push_key_does_not_exists',
 
     auth_weak_password: 'auth/weak-password',
     auth_email_already_in_use: 'auth/email-already-in-use',

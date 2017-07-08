@@ -19,14 +19,19 @@ exports.api = functions.https.onRequest((req, res) => {
   cors(req, res, () => {
     console.log("postApi() begins!");
     let forum = (new Forum()).setRoot(db.ref('/'));
-    //res.send( JSON.stringify( req.body ) + JSON.stringify( req.params ) + JSON.stringify( req.query ) );
-    
     forum.api(req.body)
-      .then(x => res.send({code: 0, data: x}))
+      .then(x => res.send({ code: 0, data: x }))
       .catch(e => res.send({ code: e.message, message: forum.getLastErrorMessage }));
-    console.log("Send");
+    console.log("postApi() end!");
   });
 
 });
 
 
+
+exports.postSeo = functions.https.onRequest((req, res) => {
+  let forum = (new Forum()).setRoot(db.ref('/'));
+  forum.seo( req.path )
+    .then( html => res.status(200).send( html ) )
+    .catch( e => console.log(`ERROR: forum.seo(${req.path}) : ${e.message}`));
+});
