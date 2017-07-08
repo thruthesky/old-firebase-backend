@@ -168,6 +168,7 @@ export class Forum extends Base {
         return this.category().once('value').then(snapshot => {
             //console.log(snapshot.val());
             let val = snapshot.val();
+            if ( val === null ) return this.error( ERROR.no_category_exists_while_get_categories );
             for (let k of Object.keys(val)) {
                 let v = val[k];
                 //console.log(v);
