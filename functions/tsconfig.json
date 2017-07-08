@@ -16,6 +16,7 @@
     "files": [
         "node_modules/typescript/lib/lib.es6.d.ts",
         "test.ts",
-        "index.ts"
+        "index.ts",
+        "test-seo.ts"
     ]
 }

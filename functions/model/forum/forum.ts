@@ -232,8 +232,8 @@ export class Forum extends Base {
         // if not exists create one with title.
         // if exists, create with push-key + title.
 
-        let friendlyUrlKey = await this.createFriendlyUrl( ref.key, post.subject );
-        
+        let friendlyUrlKey = await this.createFriendlyUrl(ref.key, post.subject);
+
         post.friendly_url = friendlyUrlKey;
         return this.setPostData(ref, post);
     }
@@ -243,28 +243,28 @@ export class Forum extends Base {
      * @param pushKey Post push-key
      * @param subject Post subject
      */
-    createFriendlyUrl( pushKey, subject ) : firebase.Promise<any> {
-        if ( ! pushKey ) return this.error( ERROR.push_key_empty_on_creating_friendly_url );
+    createFriendlyUrl(pushKey, subject): firebase.Promise<any> {
+        if (!pushKey) return this.error(ERROR.push_key_empty_on_creating_friendly_url);
         //// if ( ! subject ) return this.error( ERROR.post_subject_is_empty_on_creating_friendly_url );
         ////....
 
-        if ( subject ) subject = this.convertFriendlyUrlString(subject);
+        if (subject) subject = this.convertFriendlyUrlString(subject);
         else subject = pushKey;
 
-        return this.postFriendlyUrl.child( subject ).once('value')
-            .then( snap => {
+        return this.postFriendlyUrl.child(subject).once('value')
+            .then(snap => {
                 let friendlyUrlkey;
-                if ( snap.val() ) friendlyUrlkey = pushKey + '-' + subject;
+                if (snap.val()) friendlyUrlkey = pushKey + '-' + subject;
                 else friendlyUrlkey = subject;
-                return this.postFriendlyUrl.child( friendlyUrlkey ).set( pushKey )
-                    .then( () => friendlyUrlkey );
+                return this.postFriendlyUrl.child(friendlyUrlkey).set(pushKey)
+                    .then(() => friendlyUrlkey);
             })
     }
-    convertFriendlyUrlString( subject ) {
+    convertFriendlyUrlString(subject) {
         let ns = subject.replace(/[`~!@#$%^&*()_|+ =?;:'",.<>\{\}\[\]\\\/]/gm, '-');
         ns = ns.replace(/^\-+/gm, '');
-        if ( ns ) ns = ns.replace(/\-+$/gm, '');
-        if ( ns ) ns = ns.replace(/\-+/gm, '-');
+        if (ns) ns = ns.replace(/\-+$/gm, '');
+        if (ns) ns = ns.replace(/\-+/gm, '-');
         return ns;
     }
 
@@ -489,17 +489,17 @@ export class Forum extends Base {
     }
 
 
-        /**
-     * 
-     * @param category 
-     * @code
-     *              this.categoryPostRelation().child(category).child(key).set(true);
-     *              this.categoryPostRelation().child(ALL_CATEGORIES).child(key).set(true);
-     * @endcode
-     */
-    categoryPostRelation( category?: string ): firebase.database.Reference {
-        if ( this.isEmpty(category) ) return this.root.ref.child(this.categoryPostRelationPath);
-        else return this.root.child( this.categoryPostRelationPath ).child( category );
+    /**
+ * 
+ * @param category 
+ * @code
+ *              this.categoryPostRelation().child(category).child(key).set(true);
+ *              this.categoryPostRelation().child(ALL_CATEGORIES).child(key).set(true);
+ * @endcode
+ */
+    categoryPostRelation(category?: string): firebase.database.Reference {
+        if (this.isEmpty(category)) return this.root.ref.child(this.categoryPostRelationPath);
+        else return this.root.child(this.categoryPostRelationPath).child(category);
     }
 
     get categoryPostRelationPath(): string {
@@ -527,12 +527,16 @@ export class Forum extends Base {
     get postDataPath(): string {
         return this.path(POST_DATA_PATH);
     }
-    
-    get postFriendlyUrl() : firebase.database.Reference {
-        return this.root.child( POST_FRIENDLY_URL_PATH );
+
+    /**
+     * Path
+     * 
+     */
+    get postFriendlyUrl(): firebase.database.Reference {
+        return this.root.child(POST_FRIENDLY_URL_PATH);
     }
 
-    
+
 
 
     path(p: string) {
@@ -555,6 +559,19 @@ export class Forum extends Base {
 
 
 
+
+    ////////////////////////////////////
+    ///
+    ///     FILE UPLOAD
+    ///
+    ////////////////////////////////////
+
+
+
+    upload( filename, data, success, error, percentage ) {
+        let root = firebase.storage().ref();
+        let uploadTask = root.child('upload/');
+    }
 
 
     ////////////////////////////////////
@@ -608,6 +625,63 @@ export class Forum extends Base {
         this.lastErrorMessage = m;
         // console.log('------> ERROR: ', m);
     }
+
+
+    ////////// SEO
+    async seo(path) {
+        let key = path.split('/').pop();
+        // console.log("key: ", key);
+        let html = await this.postFriendlyUrl.child(key).once('value')
+            .then(snap => {
+                let postKey = snap.val();
+                if (postKey === null) {
+                    // console.log("postKey is null. key= ", key);
+                    return this.error(ERROR.friendly_url_push_key_does_not_exists);
+                }
+                return this.postData(postKey).once('value').then(snap => {
+                    let key = snap.key;
+                    let post = snap.val();
+                    // console.log("post: ", post);
+                    
+
+                    let siteName = "SONUB";
+                    let title = "";
+                    let description = "";
+                    let author = "";
+                    let keywords = "";
+                    let image = "";
+                    let url = "";
+
+                    if ( post === null ) {
+                        /// error. just redirect to home page.
+
+                    }
+                    else {
+
+                    }
+                    let html = `<!doctype html>
+    <head>
+      <title>${post.subject}</title>
+      <meta http-equiv="refresh" content="0;url=https://www.sonub.com/?p=${key}">
+      <script>
+        location.href = "https://www.sonub.com/?p=${key}";
+      </script>
+    </head>
+    <body>
+      path: ${path}<br>
+      key: ${key}<br>
+      Post: ${post.content}
+    </body>
+  </html>`;
+                    return html;
+                });
+            })
+
+        return html;
+    }
+
+
+
 
 
 }

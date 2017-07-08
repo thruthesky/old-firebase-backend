@@ -14,6 +14,7 @@ import { Forum } from './model/forum/forum';
 import { POST, CATEGORY, ALL_CATEGORIES } from './model/forum/forum.interface';
 import { ERROR, isError } from './model/error/error';
 import * as chalk from 'chalk';
+const cheerio = require('cheerio');
 interface POST_REQUEST { function: string, data: POST };
 
 
@@ -53,13 +54,14 @@ class AppTest {
 
     let re;
 
-    await this.testIDFormat();
-    await this.testMethods();
-    await this.testCategory();
-    await this.testCreateAPost();
-    await this.testPost();
-    await this.testPostApi();
-    await this.testFriendlyUrl();
+    // await this.testIDFormat();
+    // await this.testMethods();
+    // await this.testCategory();
+    // await this.testCreateAPost();
+    // await this.testPost();
+    // await this.testPostApi();
+    // await this.testFriendlyUrl();
+    await this.testSeo();
 
     setTimeout(() => {
       console.log(`Tests: ${this.successCount + this.errorCount}, successes: ${this.successCount}, errors: ${this.errorCount}`);
@@ -277,10 +279,10 @@ class AppTest {
    * @param uid 
    * @param secret 
    */
-  async testCreateAPost(category="abc", subject=" e~ Hhem... This is subject. ^^; ", uid="This-is-uid", secret="This-is-secreit") {
+  async testCreateAPost(category = "abc", subject = " e~ Hhem... This is subject. ^^; ", uid = "This-is-uid", secret = "This-is-secreit") {
     /// post create and get
-    let post: POST = { secret: secret, uid: uid, categories: [ category ], subject: subject };
-    let key = await this.forum.createPost(post).catch( e => this.error("Post should be created => " + e.message));
+    let post: POST = { secret: secret, uid: uid, categories: [category], subject: subject };
+    let key = await this.forum.createPost(post).catch(e => this.error("Post should be created => " + e.message));
     let p = await this.forum.getPostData(key)
       .catch(e => this.error("getPostData() failed with key: " + key));
     return p;
@@ -291,9 +293,9 @@ class AppTest {
 
     console.log("\n =========================== testPost() =========================== ");
 
-  
-    let p = await this.testCreateAPost( 'abc', '' );
-    this.test( p.key, "Post with empty subject has been created with key: " + p.key );
+
+    let p = await this.testCreateAPost('abc', '');
+    this.test(p.key, "Post with empty subject has been created with key: " + p.key);
 
     let re;
 
@@ -622,14 +624,14 @@ class AppTest {
   async testFriendlyUrl() {
 
     let subject = " #프랜들리, 유알엘을, 테스트합니다 ^^; " + this.forum.randomString();
-    let friendlySubject = this.forum.convertFriendlyUrlString( subject );
+    let friendlySubject = this.forum.convertFriendlyUrlString(subject);
 
     let simple: POST = await this.testCreateAPost("abc", subject);
-    this.expect( simple.friendly_url, friendlySubject, "Post created with friendly url: ");
+    this.expect(simple.friendly_url, friendlySubject, "Post created with friendly url: ");
 
-    let again: POST = await this.testCreateAPost( "abc", subject);
-    this.expect( again.friendly_url, again.key + '-' + friendlySubject, "Post created with friendly url: ");
-    
+    let again: POST = await this.testCreateAPost("abc", subject);
+    this.expect(again.friendly_url, again.key + '-' + friendlySubject, "Post created with friendly url: ");
+
   }
 
 
@@ -704,6 +706,41 @@ class AppTest {
     else this.error(m);
   }
 
+
+
+
+  /// SEO.
+
+  async testSeo() {
+    
+    await this.forum.seo("https://www.sonub.com/p/" + "Wrong-friendly-url-test" )
+      .then(() => this.error("Friedly url with wrong url must be failed"))
+      .catch(e => this.expect( e.message, ERROR.friendly_url_push_key_does_not_exists, "Getting friedly url info with wrong url properly failed."));
+
+
+    // create a post.
+    let subject = " #Friendly... URL, Test ..! ^^; " + (new Date()).getMinutes() + (new Date()).getSeconds();
+    let friendlySubject = this.forum.convertFriendlyUrlString( subject );
+
+    let post: POST = await this.testCreateAPost("abc", subject);
+    this.expect( post.friendly_url, friendlySubject, "testSeo() => Post Created: url: " + post.friendly_url);
+
+
+    let html = await this.forum.seo("https://www.sonub.com/p/" + post.friendly_url ).catch(e => e.messsage);
+    const $html = cheerio.load(html)('html');
+    this.expect( post.subject, $html.find('title').text(), "Yes. subject maches" );
+
+
+    let post2: POST = await this.testCreateAPost("abc", subject);
+    this.expect( post2.friendly_url, post2.key + '-' + friendlySubject, "testSeo() => Post create another post: url: " + post2.friendly_url);
+    this.test( post2.friendly_url != post.friendly_url, "Friendly URL different from post and post2" );
+    
+
+    let html2 = await this.forum.seo("https://www.sonub.com/p/" + post.friendly_url ).catch(e => e.messsage);
+    const $html2 = cheerio.load(html2)('html');
+    this.expect( post2.subject, $html2.find('title').text(), "Yes. subject maches" );
+
+  }
 
 }
 
