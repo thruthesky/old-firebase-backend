@@ -33,5 +33,11 @@ exports.postSeo = functions.https.onRequest((req, res) => {
   let forum = (new Forum()).setRoot(db.ref('/'));
   forum.seo( req.path )
     .then( html => res.status(200).send( html ) )
-    .catch( e => console.log(`ERROR: forum.seo(${req.path}) : ${e.message}`));
+    .catch( e => {
+      // let msg = `SEO ERROR: forum.seo(${req.path}) : ${e.message}`;
+      // console.log( msg );
+       forum.getSeoHtml( null )
+        .then( html => res.status(200).send( html ) );
+      
+    });
 });

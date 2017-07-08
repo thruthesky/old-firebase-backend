@@ -279,9 +279,9 @@ class AppTest {
    * @param uid 
    * @param secret 
    */
-  async testCreateAPost(category = "abc", subject = " e~ Hhem... This is subject. ^^; ", uid = "This-is-uid", secret = "This-is-secreit") {
+  async testCreateAPost(category = "abc", subject = " e~ Hhem... This is subject. ^^; ", uid = "This-is-uid", secret = "This-is-secreit", content='') {
     /// post create and get
-    let post: POST = { secret: secret, uid: uid, categories: [category], subject: subject };
+    let post: POST = { secret: secret, uid: uid, categories: [category], subject: subject, content: content };
     let key = await this.forum.createPost(post).catch(e => this.error("Post should be created => " + e.message));
     let p = await this.forum.getPostData(key)
       .catch(e => this.error("getPostData() failed with key: " + key));
@@ -627,10 +627,10 @@ class AppTest {
     let friendlySubject = this.forum.convertFriendlyUrlString(subject);
 
     let simple: POST = await this.testCreateAPost("abc", subject);
-    this.expect(simple.friendly_url, friendlySubject, "Post created with friendly url: ");
+    this.expect(simple.friendly_url_key, friendlySubject, "Post created with friendly url: ");
 
     let again: POST = await this.testCreateAPost("abc", subject);
-    this.expect(again.friendly_url, again.key + '-' + friendlySubject, "Post created with friendly url: ");
+    this.expect(again.friendly_url_key, again.key + '-' + friendlySubject, "Post created with friendly url: ");
 
   }
 
@@ -713,6 +713,12 @@ class AppTest {
 
   async testSeo() {
     
+
+
+  await this.forum.seo('').then(() => this.error("Access seo page with empty url must be faield"), (e) => this.expect(e.message, ERROR.path_is_empty_on_seo, "SEO with empty path failed properly."));    
+
+  await this.forum.seo('https://www.sonub.com/').then(() => this.error("Access seo page with empty key must be faield"), (e) => this.expect(e.message, ERROR.friendly_url_key_is_empty_on_seo, "SEO with empty key failed properly."));    
+
     await this.forum.seo("https://www.sonub.com/p/" + "Wrong-friendly-url-test" )
       .then(() => this.error("Friedly url with wrong url must be failed"))
       .catch(e => this.expect( e.message, ERROR.friendly_url_push_key_does_not_exists, "Getting friedly url info with wrong url properly failed."));
@@ -723,22 +729,31 @@ class AppTest {
     let friendlySubject = this.forum.convertFriendlyUrlString( subject );
 
     let post: POST = await this.testCreateAPost("abc", subject);
-    this.expect( post.friendly_url, friendlySubject, "testSeo() => Post Created: url: " + post.friendly_url);
+    this.expect( post.friendly_url_key, friendlySubject, "testSeo() => Post Created: url: " + post.friendly_url_key);
 
 
-    let html = await this.forum.seo("https://www.sonub.com/p/" + post.friendly_url ).catch(e => e.messsage);
+    let url = "https://www.sonub.com/p/" + post.friendly_url_key;
+    console.log("Get post from friendly url: ", url);
+    let html = await this.forum.seo( url ).catch(e => e.messsage);
     const $html = cheerio.load(html)('html');
     this.expect( post.subject, $html.find('title').text(), "Yes. subject maches" );
 
 
-    let post2: POST = await this.testCreateAPost("abc", subject);
-    this.expect( post2.friendly_url, post2.key + '-' + friendlySubject, "testSeo() => Post create another post: url: " + post2.friendly_url);
-    this.test( post2.friendly_url != post.friendly_url, "Friendly URL different from post and post2" );
+    let post2: POST = await this.testCreateAPost("abc", subject, 'uid', 'secret', `Hi,
+    I am content.
+    This is content. Tt will be used as description. ^^; #@!^\nFeed\rCarret`);
+    this.expect( post2.friendly_url_key, post2.key + '-' + friendlySubject, "testSeo() => Post create another post: url: " + post2.friendly_url_key);
+    this.test( post2.friendly_url_key != post.friendly_url_key, "Friendly URL different from post and post2" );
     
 
-    let html2 = await this.forum.seo("https://www.sonub.com/p/" + post.friendly_url ).catch(e => e.messsage);
+    url = "https://www.sonub.com/p/" + post2.friendly_url_key;
+    console.log("get post2 : ", url);
+    let html2 = await this.forum.seo( url ).catch(e => e.messsage);
     const $html2 = cheerio.load(html2)('html');
     this.expect( post2.subject, $html2.find('title').text(), "Yes. subject maches" );
+
+
+    console.log( html2 );
 
   }
 

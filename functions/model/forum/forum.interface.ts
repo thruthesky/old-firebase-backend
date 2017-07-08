@@ -41,7 +41,7 @@ interface POST_COMMON {
     sticky_forum?: boolean;
     sticky_all_forum?: boolean;
     stamp?: number;
-    friendly_url?: string;              /// friendly url.
+    friendly_url_key?: string;              /// friendly url.
     files?: Array<string>;              /// upload file information.
 
 

@@ -235,7 +235,7 @@ export class Forum extends Base {
 
         let friendlyUrlKey = await this.createFriendlyUrl(ref.key, post.subject);
 
-        post.friendly_url = friendlyUrlKey;
+        post.friendly_url_key = friendlyUrlKey;
         return this.setPostData(ref, post);
     }
 
@@ -465,13 +465,19 @@ export class Forum extends Base {
      * @param o Options.
      */
     page(o) {
-        let $ref = this.postData().orderByKey().limitToLast(o.size);
+        let ref;
 
-        return $ref
+        if ( o['key'] ) {
+            ref = this.postData().orderByKey().endAt( o['key'] ).limitToLast( o.size );
+        }
+        else ref = this.postData().orderByKey().limitToLast(o.size);
+
+        return ref
             .once('value')
             .then(s => {
-                let objects = s.val();
                 let posts = [];
+                let objects = s.val();
+                if (objects === null) return posts;
                 for (let k of Object.keys(objects).reverse()) {
                     posts.push(objects[k]);
                 }
@@ -623,7 +629,10 @@ export class Forum extends Base {
 
     ////////// SEO
     async seo(path) {
+        if (!path) return this.error(ERROR.path_is_empty_on_seo);
         let key = path.split('/').pop();
+
+        if (!key) return this.error(ERROR.friendly_url_key_is_empty_on_seo);
         // console.log("key: ", key);
         let html = await this.postFriendlyUrl.child(key).once('value')
             .then(snap => {
@@ -636,37 +645,7 @@ export class Forum extends Base {
                     let key = snap.key;
                     let post = snap.val();
                     // console.log("post: ", post);
-
-
-                    let siteName = "SONUB";
-                    let title = "";
-                    let description = "";
-                    let author = "";
-                    let keywords = "";
-                    let image = "";
-                    let url = "";
-
-                    if (post === null) {
-                        /// error. just redirect to home page.
-
-                    }
-                    else {
-
-                    }
-                    let html = `<!doctype html>
-    <head>
-      <title>${post.subject}</title>
-      <meta http-equiv="refresh" content="0;url=https://www.sonub.com/?p=${key}">
-      <script>
-        location.href = "https://www.sonub.com/?p=${key}";
-      </script>
-    </head>
-    <body>
-      path: ${path}<br>
-      key: ${key}<br>
-      Post: ${post.content}
-    </body>
-  </html>`;
+                    let html = this.getSeoHtml(post);
                     return html;
                 });
             })
@@ -674,6 +653,82 @@ export class Forum extends Base {
         return html;
     }
 
+    async getSeoHtml(post: POST) {
+
+        let siteName = "SONUB";
+        let title = "www.sonub.com - social network hub!";
+        let description = "Sonub is a community portal for every one. You will get everything you want. You can get what you are interest in like job, food and mutch more.";
+        let author = "sonub";
+        let keywords = "Social Network Hub! Discussion, Questions and Answers, Job openings, Buy and sell, Friends";
+        let image = "https://www.sonub.com/assets/images/seo/image-meta.png";
+        let url = "https://www.sonub.com";
+        let key = null;
+        let links: string = '';
+        let posts = [];
+
+        if (post === null) {
+            posts = await this.page({ size: 32 });
+        }
+        else {
+            
+            title = post.subject ? post.subject : null;
+            description = post.content ? post.content.replace(/\s+/g, ' ').substring(0, 255) : null;
+            author = post.name ? post.name : null;
+            keywords = "Social Network Hub! Discussion, Questions and Answers, Job openings, Buy and sell, Friends";
+            image = post.files && post.files.length ? post.files[0] : null;
+            url = post.friendly_url_key;
+            key = post.key;
+
+            posts = await this.page({ size: 32, key: key });
+
+
+        }
+
+        for (let post of posts) {
+            links += `<a href="https://www.sonub.com/p/${post.friendly_url_key}">${post.subject}</a>`;
+        }
+
+        let html = `<!doctype html>
+    <head>
+        <title>${title}</title>
+        <meta name="description" content="${description}">
+        <meta name="keywords" content="${keywords}">
+        `;
+        if (author) html += `<meta name="author" content="${author}">`;
+        html += `
+        <meta itemprop="name" content="${siteName}">
+        <meta itemprop="description" content="${description}">
+`;
+
+        if (image) html += `<meta itemprop="image" content="${image}">`;
+
+        html += `
+        <meta property="og:site_name" content="${siteName}">
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="${title}">
+        <meta property="og:url" content="${url}">
+        <meta property="og:description" content="${description}">`;
+        if (image) html += `
+        <meta property="og:image" content="${image}">`;
+        html += `
+        <meta http-equiv="refresh" content="0;url=https://www.sonub.com/?p=${key}">
+        <style>
+            body { background-color: white; color: white; }
+            h1 { color: white; }
+            a { color: white; }
+        </style>
+        <script>
+            location.href = "https://www.sonub.com/?p=${key}";
+        </script>
+    </head>
+    <body>
+        <h1>${title}</h1>
+        <article>${description}</article>
+        ${links}
+    </body>
+</html>`;
+        return html;
+    }
 
 
 
