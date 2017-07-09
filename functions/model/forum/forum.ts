@@ -461,29 +461,83 @@ export class Forum extends Base {
 
 
     /**
-     * Returns a page ( of posts )
+     * 
+     * Returns a Promise with an array of posts to display a page ( of posts, comment, or any reference. )
+     * 
+     * @note This method returns a Promise of posts. It lacks of addition information. like if it is a last page or not.
+     *          @see pageHelper() to get those helpful information.
+     * 
      * @param o Options.
+     *      o['ref'] is the reference to look for.
+     *      o['key'] is the key to get next page of posts.
+     *      o['size'] is the numbrer of nodes(posts, comments, data) you want to key.
+     *      o['keyOnly'] - if it true, then only key will be returned as an array without 'data'.
+     * 
+     * @code
+        let o = {
+            ref: this.app.forum.categoryPostRelation(category),
+            key: this.paginationKey,
+            size: 5,
+            keyOnly: true
+        };
+        this.app.forum.page( o )
+            .then( posts => {
+                console.log("page: ", posts);
+            })
+            .catch( e => this.app.warning( e ) );
+     * @endcode
      */
-    page(o) {
-        let ref;
+    page(o): firebase.Promise<any> {
+        console.log("page: ", o);
+        let ref = o['ref'] ? o['ref'] : this.postData();
+        let size = o['size'] ? o['size'] : 10;
 
-        if ( o['key'] ) {
-            ref = this.postData().orderByKey().endAt( o['key'] ).limitToLast( o.size );
-        }
-        else ref = this.postData().orderByKey().limitToLast(o.size);
+        let q = ref.orderByKey();
+        if (o['key']) q = q.endAt(o['key']);
+        q = q.limitToLast(size);
 
-        return ref
+        return q
             .once('value')
             .then(s => {
                 let posts = [];
                 let objects = s.val();
                 if (objects === null) return posts;
                 for (let k of Object.keys(objects).reverse()) {
-                    posts.push(objects[k]);
+                    if (o['keyOnly']) posts.push(k);
+                    else posts.push(objects[k]);
                 }
                 return posts;
             });
-
+    }
+    /**
+     * This method returns an Object.
+     * 
+     * @Attention - since firebase adds the key with 'endAt(key)' for pagination, it needs to cut off the last node which will be included on next search.
+     *              so, developers should give 1 more on option['size'] for paginationKey.
+     * 
+     * @param o Options
+     * @param posts posts returned from page()
+     * 
+     * @return object
+     *              object.noMorePosts - if it is true, it means the page-scroll reached at the end of the posts.
+     *              object.paginationKey - it the next pagination key.
+     *              object.posts - is the posts to display.
+     */
+    pageHelper(o, posts: Array<string>) {
+        let obj = {
+            noMorePosts: false,
+            paginationKey: '',
+            posts: posts
+        };
+        if (!posts || posts.length == 0 || posts.length < o.size) obj.noMorePosts = true;
+        if (posts) {
+            if (posts.length > 1) {
+                obj.paginationKey = posts[posts.length - 1];
+                posts.pop();
+                obj.posts = posts;
+            }
+        }
+        return obj;
     }
 
 
@@ -670,7 +724,7 @@ export class Forum extends Base {
             posts = await this.page({ size: 32 });
         }
         else {
-            
+
             title = post.subject ? post.subject : null;
             description = post.content ? post.content.replace(/\s+/g, ' ').substring(0, 255) : null;
             author = post.name ? post.name : null;
