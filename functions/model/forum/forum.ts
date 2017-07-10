@@ -533,7 +533,7 @@ export class Forum extends Base {
         if (posts) {
             if (posts.length > 1) {
                 obj.paginationKey = posts[posts.length - 1];
-                posts.pop();
+                if ( posts.length == o.size ) posts.pop();
                 obj.posts = posts;
             }
         }
