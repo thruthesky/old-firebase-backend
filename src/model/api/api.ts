@@ -51,7 +51,7 @@ export class ApiService {
      *
      */
 
-    post( data: POST, option = {} ) : Observable<Response> {
+    post( data: any, option = {} ) : Observable<Response> {
 
         let q = this.buildQuery( data );
 

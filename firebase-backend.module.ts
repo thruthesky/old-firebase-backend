@@ -17,7 +17,7 @@ export { Forum } from './src/model/forum/forum';
 export { ERROR, isError } from './src/model/error/error';
 
 
-export { CATEGORY, CATEGORIES, POST, POSTS, ALL_CATEGORIES } from './src/model/forum/forum.interface';
+export { CATEGORY, CATEGORIES, POST, POSTS, ALL_CATEGORIES, COMMENT } from './src/model/forum/forum.interface';
 
 import { UserService } from './src/model/user/user.service';
 export { UserService, SOCIAL_PROFILE, USER_REGISTER, USER_UPDATE } from './src/model/user/user.service';

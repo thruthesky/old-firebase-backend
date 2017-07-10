@@ -495,10 +495,10 @@ export class Forum extends Base {
 
 
     /**
-     * Returns a promise with Comment.
+     * Returns a promise with Comments.
      * @param path Path for the comment
      */
-    async getComment(path): firebase.Promise<any> {
+    async getComments(path): firebase.Promise<any> {
         // console.log("getComment: ", path);
         if (this.isEmpty(path)) return this.error(ERROR.empty_path_on_get_comment);
         return this.comment().child(path).once('value').then(snap => snap.val());
@@ -891,6 +891,9 @@ export class Forum extends Base {
      * @note uid and password are checked here. So, you don't have to check it again if uid provided or password is correct.
      * 
      * @param params User input. `function`, `uid`, `secret` are required.
+     * 
+     * 
+     * @attention Do not call "this.app.forum.api( comment ).then(...)" in front-end. It will give you permission denied.
      */
     api(params): firebase.Promise<any> {
 
