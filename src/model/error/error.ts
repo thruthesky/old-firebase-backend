@@ -32,6 +32,10 @@ export function isError(code: string, compare_code?: string): boolean {
 
 
 export const ERROR = {
+    api_that_function_is_not_allowed: 'api_that_function_is_not_allowed',
+    api_function_name_is_empty: 'api_function_name_is_empty',
+    api_function_is_not_provided: 'function_is_not_provided',
+    // api_unknown_function: 'unknwon_function',
     unknown: 'unknown',
     category_id_empty: 'category_id_empty',
     post_key_empty: 'post_key_empty',
@@ -40,8 +44,6 @@ export const ERROR = {
     no_categories: 'no_categories',
     category_exists: 'category_exists',
     category_not_exist: 'category_not_exist',
-    function_is_not_provided: 'function_is_not_provided',
-    unknown_function: 'unknwon_function',
     post_data_is_empty: 'post_data_is_empty',
     requeset_is_empty: 'requeset_is_empty',
     requeset_data_is_empty: 'requeset_data_is_empty',
@@ -71,7 +73,17 @@ export const ERROR = {
     register_email_is_empty: 'register_email_is_empty',
     register_password_is_empty: 'register_password_is_empty',
     no_category_exists_while_get_categories: 'no_category_exists_while_get_categories',
-    no_data_on_file_upload: 'no_data_on_file_upload'
+    no_data_on_file_upload: 'no_data_on_file_upload',
+    // ancestors_is_undefined_on_comment_create: 'ancestors_is_undefined_on_comment_create',
+    // ancestors_is_not_array_on_comment_create: 'ancestors_is_not_array_on_comment_create',
+    // ancestors_is_empty_array_on_comment_create: 'ancestors_is_empty_array_on_comment_create',
+    empty_path_on_get_comment_uid: 'empty_path_on_get_comment_uid',
+    permission_denied_not_your_comment_on_edit_comment: 'permission_denied_not_your_comment_on_edit_comment',
+    post_not_found_by_that_key_on_create_comment: 'post_not_found_by_that_key_on_create_comment',
+    path_is_empty_on_create_comment: 'path_is_empty_on_create_comment',
+    empty_path_on_get_comment: 'empty_path_on_get_comment',
+    comment_path_empty_on_delete_comment: 'comment_path_empty_on_delete_comment',
+    permission_denied_not_your_comment_on_delete_comment: 'permission_denied_not_your_comment_on_delete_comment'
 };
 
 

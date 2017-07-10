@@ -5,10 +5,13 @@ import { ERROR } from '../error/error';
 import {
     CATEGORY_PATH, CATEGORY, CATEGORIES, POST,
     POST_DATA_PATH, CATEGORY_POST_RELATION_PATH, ALL_CATEGORIES,
-    POST_FRIENDLY_URL_PATH
+    POST_FRIENDLY_URL_PATH, COMMENT, COMMENT_PATH
 } from './forum.interface';
 
-
+const allowedApiFunctions = [
+    'createPost', 'editPost', 'deletePost',
+    'createComment', 'editComment', 'deleteComment'
+];
 
 /**
  * This is not a service. You cannot inject.
@@ -16,6 +19,10 @@ import {
 export class Forum extends Base {
     debugPath: string = ''; // debug path.
     lastErrorMessage: string = '';
+
+
+
+
     constructor() {
         super();
     }
@@ -197,9 +204,12 @@ export class Forum extends Base {
 
 
 
-    //////////////
-    /// POST
-    //////////////
+    ////////////////////////////////////////////////////////
+    ///
+    /// POST Routines
+    //
+    ////////////////////////////////////////////////////////
+
 
     isEmptyCategory(post) {
         if (post['categories'] === void 0 || post.categories.length === void 0 || post.categories.length == 0) return true;
@@ -216,12 +226,18 @@ export class Forum extends Base {
         return null;
     }
 
+
+
+
+
+
     /**
      * It does all the extra works that are needed to create a post.
      *      - category
      *      - friendly url
      *
      * @param post Post data to create
+     * @return a promise with post key.
      */
     async createPost(post: POST): firebase.Promise<any> {
         if (this.checkPost(post)) return this.error(this.checkPost(post));
@@ -236,6 +252,8 @@ export class Forum extends Base {
         let friendlyUrlKey = await this.createFriendlyUrl(ref.key, post.subject);
 
         post.friendly_url_key = friendlyUrlKey;
+
+        delete post.secret;
         return this.setPostData(ref, post);
     }
 
@@ -243,6 +261,7 @@ export class Forum extends Base {
      * @see README#SEO#Friendly URL
      * @param pushKey Post push-key
      * @param subject Post subject
+     * @return a promise with post key.
      */
     createFriendlyUrl(pushKey, subject): firebase.Promise<any> {
         if (!pushKey) return this.error(ERROR.push_key_empty_on_creating_friendly_url);
@@ -277,6 +296,10 @@ export class Forum extends Base {
 
 
 
+    /**
+     * 
+     * @param post 
+     */
     async editPost(post: POST): firebase.Promise<any> {
         if (this.checkPost(post)) return this.error(this.checkPost(post));
         if (!post.key) return this.error(ERROR.post_key_empty);
@@ -289,12 +312,19 @@ export class Forum extends Base {
         if (post.uid != old_post.uid) return this.error(ERROR.permission_denied);
 
         let ref = this.postData(post.key);
+
+        delete post.secret;
         return this.setPostData(ref, post, old_post);
     }
 
+    /**
+     * 
+     * @param o - options to delete a post.
+     * @return a promise with post key.
+     */
     async deletePost(o: { uid: string, key: string }): firebase.Promise<any> {
 
-        if (this.isEmpty(o.uid)) return this.error(ERROR.uid_is_empty);
+        if (this.isEmpty(o.uid)) return this.error(ERROR.uid_is_empty); /// uid has already check by 'api' but for direct call.
         if (this.isEmpty(o.key)) return this.error(ERROR.post_key_empty);
 
         let post: POST = await this.getPostData(o.key);
@@ -332,6 +362,10 @@ export class Forum extends Base {
     }
 
 
+    /**
+     * Returns post data.
+     * @param key Post key
+     */
     getPostData(key): firebase.Promise<any> {
         if (this.isEmpty(key)) return this.error(ERROR.post_key_empty);
         return this.postData(key).once('value').then(s => {
@@ -340,6 +374,209 @@ export class Forum extends Base {
             else throw new Error(ERROR.post_not_found_by_that_key);// this.error( ERROR.post_not_found_by_that_key );
         });
     }
+    /**
+     * Returns a promise of true if the post exists.
+     * @param key Post key
+     */
+    checkPostExists(key): firebase.Promise<any> {
+        if (this.isEmpty(key)) return this.error(ERROR.post_key_empty);
+        return this.postData(key).child('key').once('value').then(snap => {
+            if (snap.val()) return true;
+            else return false;
+        })
+            .catch(e => e.message);
+    }
+
+
+    //////////////////////////////////////////////////////////////////////
+    ///
+    /// END OF POST Rutines
+    ///
+    //////////////////////////////////////////////////////////////////////
+
+
+
+
+    //////////////////////////////////////////////////////////////////////
+    ///
+    /// COMMENT Rutines
+    ///
+    //////////////////////////////////////////////////////////////////////
+
+
+    /**
+     * 
+     *      1. Check input
+     *      2. Check if post exists.
+     *          2.a) If not exists error.
+     *      3. Check if post key exists on /forum/comment/post-push-key
+     *          3.a) If not exsits, create
+     *      4) If input(to create) commment has no parent comments, create comment.
+     *          4.a) Or if it has parents comment, then get reference of parent paths.
+     *          4.b) and create on the last.
+     * 
+     * 
+     *
+     * @param comment Comment to create
+     * 
+     * @return a promise with newly created comment path ( full path )
+     */
+    async createComment(comment: COMMENT): firebase.Promise<any> {
+
+        // if ( comment.path === void 0 ) return this.error( ERROR.path_is_undefined_on_comment_create );
+        // if ( ! comment.ancestors ) return this.error( ERROR.path_is_empty_string );
+        // if ( comment.ancestors.length == 0 ) return this.error( ERROR.ancestors_is_empty_array_on_comment_create );
+
+        if (this.isEmpty(comment.path)) return this.error(ERROR.path_is_empty_on_create_comment);
+
+
+
+        let post_key: string = comment.path.split('/')[0];
+        let re: boolean = await this.checkPostExists(post_key);
+        if (re !== true) return this.error(ERROR.post_not_found_by_that_key_on_create_comment);
+
+
+        // let path = comment.ancestors.join('/');
+
+        // console.log("path:", comment.ancestors );
+        let ref = this.comment().child(comment.path).push();
+
+
+        // let backupPath = comment.path;
+        // delete comment.path;
+        delete comment.secret;
+        comment.path += '/' + ref.key;
+
+        return ref.set(comment)
+            .then(() => comment.path);
+    }
+
+    /**
+     * 
+     * @param comment Comment to edit
+     * @return a promise with comment path ( full path )
+     */
+    async editComment(comment: COMMENT): firebase.Promise<any> {
+
+
+        let path = comment.path;
+
+        //console.log("editComment", comment);
+
+        if (this.isEmpty(path)) return this.error(ERROR.path_is_empty_on_create_comment);
+        let old_uid = await this.getCommentUid(path);
+        //console.log("_uid: ", old_uid);
+
+        if (comment.uid != old_uid) return this.error(ERROR.permission_denied_not_your_comment_on_edit_comment);
+
+
+        // delete comment.path;
+        delete comment.secret;
+
+        return this.comment().child(path).set(comment).then(() => path);
+    }
+
+
+
+    /**
+     * 
+     * Returns a promise of 'uid'.
+     * 
+     * @param path Path of comment
+     * @return a promise of uid.
+     */
+    async getCommentUid(path): firebase.Promise<any> {
+        if (this.isEmpty(path)) return this.error(ERROR.empty_path_on_get_comment_uid);
+        return this.comment().child(path).child('uid').once('value').then(snap => {
+            if (snap.val()) return snap.val();
+            else return '';
+        });
+    }
+
+
+    /**
+     * Returns a promise with Comment.
+     * @param path Path for the comment
+     */
+    async getComment(path): firebase.Promise<any> {
+        // console.log("getComment: ", path);
+        if (this.isEmpty(path)) return this.error(ERROR.empty_path_on_get_comment);
+        return this.comment().child(path).once('value').then(snap => snap.val());
+    }
+
+
+
+    /**
+     * 
+     * @param o - options to delete a post.
+     * @return a promise with deleted comment path.
+     */
+    async deleteComment(comment: COMMENT): firebase.Promise<any> {
+
+
+        if (this.isEmpty(comment.path)) return this.error(ERROR.comment_path_empty_on_delete_comment);
+
+        let old_uid = await this.getCommentUid(comment.path);
+        if (comment.uid != old_uid) return this.error(ERROR.permission_denied_not_your_comment_on_delete_comment);
+
+
+        await this.comment().child(comment.path).set(null);
+
+        return comment.path;
+    }
+
+
+
+
+
+    /**
+     * Make the tree strcuture comment object into array.
+     * @param comment commet from data.
+     * @return Array of comments.
+     */
+    commentsTreeToArray(comment: COMMENT, arrComments = [], depth = 0) {
+
+
+
+        /**
+         * if depth == 0, then it is '/forum/comment/-push-key' which has no comment data. it only has comment keys of the post.
+         */
+        if (depth) {
+            let obj: COMMENT = {
+                uid: comment.uid,
+                path: comment.path,
+                content: comment.content,
+                stamp: comment.stamp,
+                files: comment.files,
+                depth: depth
+            };
+            arrComments.push(obj);
+        }
+
+
+        for (let p in comment) {
+            if (typeof comment[p] === "object") {
+                if (comment[p]['path'] !== void 0) {
+                    depth++;
+                    this.commentsTreeToArray(comment[p], arrComments, depth);
+                    depth--;
+                }
+            }
+        }
+
+        return arrComments;
+    }
+
+
+
+
+    //////////////////////////////////////////////////////////////////////
+    ///
+    /// END OF COMMENT Rutines
+    ///
+    //////////////////////////////////////////////////////////////////////
+
+
 
 
     /**
@@ -533,7 +770,7 @@ export class Forum extends Base {
         if (posts) {
             if (posts.length > 1) {
                 obj.paginationKey = posts[posts.length - 1];
-                if ( posts.length == o.size ) posts.pop();
+                if (posts.length == o.size) posts.pop();
                 obj.posts = posts;
             }
         }
@@ -543,12 +780,17 @@ export class Forum extends Base {
 
 
 
+    /////////////////////////////////////////////////////////////////////////
+    ////
     //// PATHS
+    ////
+    /////////////////////////////////////////////////////////////////////////
 
     category(name?): firebase.database.Reference {
         if (this.isEmpty(name)) return this.root.ref.child(this.categoryPath);
         else return this.root.ref.child(this.categoryPath).child(name);
     }
+
 
     get categoryPath(): string {
         return this.path(CATEGORY_PATH);
@@ -556,13 +798,13 @@ export class Forum extends Base {
 
 
     /**
- * 
- * @param category 
- * @code
- *              this.categoryPostRelation().child(category).child(key).set(true);
- *              this.categoryPostRelation().child(ALL_CATEGORIES).child(key).set(true);
- * @endcode
- */
+     * 
+     * @param category 
+     * @code
+     *              this.categoryPostRelation().child(category).child(key).set(true);
+     *              this.categoryPostRelation().child(ALL_CATEGORIES).child(key).set(true);
+     * @endcode
+     */
     categoryPostRelation(category?: string): firebase.database.Reference {
         if (this.isEmpty(category)) return this.root.ref.child(this.categoryPostRelationPath);
         else return this.root.child(this.categoryPostRelationPath).child(category);
@@ -603,6 +845,15 @@ export class Forum extends Base {
     }
 
 
+    /**
+     * 
+     */
+    comment(): firebase.database.Reference {
+        return this.root.ref.child(COMMENT_PATH);
+    }
+
+    ////// EO PATH
+
 
 
     path(p: string) {
@@ -637,12 +888,17 @@ export class Forum extends Base {
 
     /**
      * 
+     * @note uid and password are checked here. So, you don't have to check it again if uid provided or password is correct.
+     * 
      * @param params User input. `function`, `uid`, `secret` are required.
      */
     api(params): firebase.Promise<any> {
 
         if (params === void 0) return this.error(ERROR.requeset_is_empty);
-        if (params['function'] === void 0) return this.error(ERROR.function_is_not_provided);
+        let func = params['function'];
+        if (func === void 0) return this.error(ERROR.api_function_is_not_provided);
+        if (!func) return this.error(ERROR.api_function_name_is_empty);
+        if (allowedApiFunctions.indexOf(func) == -1) return this.error(ERROR.api_that_function_is_not_allowed);
 
         if (!params['uid']) return this.error(ERROR.uid_is_empty);
         if (this.checkKey(params.uid)) return this.error(ERROR.malformed_key);
@@ -651,14 +907,13 @@ export class Forum extends Base {
 
         return this.getSecretKey(params.uid)
             .then(key => {          /// secret key check for security.
-                if (key === params['secret']) return key;
+                if (key === params['secret']) {
+                    return key;
+                }
                 else return this.error(ERROR.secret_does_not_match);
             })
-            .then(key => {
-                let func = params['function'];
-                if (this[func] === void 0) return this.error(ERROR.unknown_function);
-                return this[func](params);
-            });
+            .then(key => this[func](params));
+
     }
 
 

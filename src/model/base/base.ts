@@ -93,10 +93,10 @@ export class Base {
      * Sets a new secure key.
      */
     setSecretKey(uid: string): firebase.Promise<any> {
-        let key = this.randomString(uid);
-        console.log(`key: ${key} is going to be set`);
-        return this.root.child(SECRET_KEY_PATH).child(uid).set(key)
-            .then(() => key)
+        let secretkey = this.randomString(uid);
+        console.log(`key: ${secretkey} is going to be set`);
+        return this.root.child(SECRET_KEY_PATH).child(uid).set(secretkey)
+            .then(() => secretkey)
             //.catch(e => console.error(e));
 
     }
@@ -107,14 +107,16 @@ export class Base {
      *      - or it will generate new secure key.
      * @param uid user uid
      * 
+     * @return a promise of secret key.
+     * 
      * 
      */
     generateSecretKey(uid: string): firebase.Promise<any> {
         console.log(`generateSecretKey() for uid: ${uid}`);
         return this.getSecretKey(uid)
-            .then(key => {
-                console.log("generateSecretKey() => getSecretKey() : ", key);
-                if (key) return key;
+            .then(secretkey => {
+                console.log("generateSecretKey() => getSecretKey() : ", secretkey);
+                if (secretkey) return secretkey;
                 else {
                     console.log(`Secret key not exist. going to set`);
                     return this.setSecretKey(uid);

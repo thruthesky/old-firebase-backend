@@ -11,11 +11,14 @@ const db = app.database();
 //import { Post, POST } from './model/post';
 
 import { Forum } from './model/forum/forum';
-import { POST, CATEGORY, ALL_CATEGORIES } from './model/forum/forum.interface';
+import { POST, CATEGORY, ALL_CATEGORIES, COMMENT } from './model/forum/forum.interface';
 import { ERROR, isError } from './model/error/error';
 import * as chalk from 'chalk';
 const cheerio = require('cheerio');
+const argv = require('yargs').argv;
+
 interface POST_REQUEST { function: string, data: POST };
+
 
 
 function datetime() {
@@ -50,18 +53,33 @@ class AppTest {
 
   async run() {
 
+
+
     this.log("TEST BEGIN at: " + (new Date).getMinutes() + ':' + (new Date).getSeconds());
 
     let re;
 
-    // await this.testIDFormat();
-    // await this.testMethods();
-    // await this.testCategory();
-    // await this.testCreateAPost();
-    // await this.testPost();
-    // await this.testPostApi();
-    // await this.testFriendlyUrl();
-    await this.testSeo();
+    // console.log(argv._);
+
+
+    await this.prepareTest();
+    if (argv._.length == 2 && argv._[0]) {
+      await this[argv._[0]]();
+    }
+    else {
+      await this.testIDFormat();
+      await this.testCategory();
+      await this.testCreateAPost();
+      await this.testPost();
+      await this.testApi();
+      await this.testPostApi();
+      await this.testComment();
+      await this.testCommentsTreeToArray();
+      await this.testFriendlyUrl();
+      await this.testSeo();
+    }
+
+
 
     setTimeout(() => {
       console.log(`Tests: ${this.successCount + this.errorCount}, successes: ${this.successCount}, errors: ${this.errorCount}`);
@@ -94,7 +112,11 @@ class AppTest {
 
   }
 
-  async testMethods() {
+  /**
+   * It gets userA's scecret.
+   * 
+   */
+  async prepareTest() {
     console.log("\n =========================== testMethods() =========================== ")
 
     // let re = this.forum.functionName({ function: '' });
@@ -114,7 +136,10 @@ class AppTest {
 
 
     await this.forum.generateSecretKey(this.userA.uid)
-      .then(key => this.success(`key: ${key} generated for ${this.userA.name}`))
+      .then(secret => {
+        this.userA.secret = secret;
+        this.success(`key: ${secret} generated for ${this.userA.name}`);
+      })
       .catch(e => {
         console.log("ERROR", e);
         this.error(`generateSecretKey failed`);
@@ -277,9 +302,11 @@ class AppTest {
    * @param category 
    * @param subject 
    * @param uid 
-   * @param secret 
+   * @param secret
+   * 
+   * @return a promise of POST
    */
-  async testCreateAPost(category = "abc", subject = " e~ Hhem... This is subject. ^^; ", uid = "This-is-uid", secret = "This-is-secreit", content='') {
+  async testCreateAPost(category = "abc", subject = " e~ Hhem... This is subject. ^^; ", uid = "This-is-uid", secret = "This-is-secreit", content = '') {
     /// post create and get
     let post: POST = { secret: secret, uid: uid, categories: [category], subject: subject, content: content };
     let key = await this.forum.createPost(post).catch(e => this.error("Post should be created => " + e.message));
@@ -294,8 +321,16 @@ class AppTest {
     console.log("\n =========================== testPost() =========================== ");
 
 
-    let p = await this.testCreateAPost('abc', '');
+    let p: POST = await this.testCreateAPost('abc', '');
     this.test(p.key, "Post with empty subject has been created with key: " + p.key);
+
+
+
+    let ex: boolean = await this.forum.checkPostExists(p.key);
+    this.expect(ex, true, "checkPostExists");
+    ex = await this.forum.checkPostExists("-wrong-post-key");
+    this.expect(ex, false, "checkPostExists properly failed.");
+
 
     let re;
 
@@ -428,7 +463,7 @@ class AppTest {
     await this.forum.category(ALL_CATEGORIES).child(key_book).once('value').then(x => this.success(`${key_book} exists under all category`)).catch(e => this.error(e.message));
 
     /// delete with no uid, no key
-    await this.forum.deletePost({ uid: '', key: '' }).catch(e => this.expect(e.message, ERROR.uid_is_empty, "deletePost() must have uid"));
+    await this.forum.deletePost({ uid: '', key: key_book }).catch(e => this.expect(e.message, ERROR.uid_is_empty, "deletePost() must have uid"));
     await this.forum.deletePost({ uid: 'a', key: '' }).catch(e => this.expect(e.message, ERROR.post_key_empty, "deletePost() must have key"));
 
     /// delete with wrong uid
@@ -468,6 +503,18 @@ class AppTest {
 
   }
 
+
+  async testApi() {
+    await this.forum.api([])
+      .catch(e => this.expect(e.message, ERROR.api_function_is_not_provided, "api call without function properly failed."));
+    await this.forum.api({ function: '' })
+      .catch(e => this.expect(e.message, ERROR.api_function_name_is_empty, "api call with empty function anme properly faield"));
+
+    await this.forum.api({ function: 'wrong' })
+      .catch(e => this.expect(e.message, ERROR.api_that_function_is_not_allowed, "api call with wrong function name properly failed"));
+
+  }
+
   async testPostApi() {
 
     console.log("\n =========================== testPostApi() =========================== ");
@@ -492,7 +539,7 @@ class AppTest {
       secret: this.userA.secret
     })
       .then(() => { this.error("wrong function name must fail.") })
-      .catch(e => this.expect(e.message, ERROR.unknown_function, 'Wrong function name test'));
+      .catch(e => this.expect(e.message, ERROR.api_that_function_is_not_allowed, 'Wrong function name test'));
 
 
 
@@ -542,6 +589,7 @@ class AppTest {
     post.categories = [];
     post.subject = "Subject updated...!";
     post.content = "Content updated...!";
+    post.secret = this.userA.secret;
     await this.forum.api(post)
       .then(() => this.error("Calling postApi with empty category must be failed."))
       .catch(e => this.expect(e.message, ERROR.no_categories, 'postApi() for editing a post with no category properly failed'));
@@ -578,12 +626,10 @@ class AppTest {
     /// edit with wrong post key. expect error
     let newData = Object.assign({}, post);
     newData.key = '-wrong-post-key';
+    newData.secret = this.userA.secret;
     await this.forum.api(newData)
       .then(() => this.error("Calling postApi with wrong post key must be failed."))
       .catch(e => this.expect(e.message, ERROR.post_not_found_by_that_key, `'edit' properly failed`));
-
-
-
 
 
     /// delete post
@@ -712,52 +758,297 @@ class AppTest {
   /// SEO.
 
   async testSeo() {
-    
 
 
-  await this.forum.seo('').then(() => this.error("Access seo page with empty url must be faield"), (e) => this.expect(e.message, ERROR.path_is_empty_on_seo, "SEO with empty path failed properly."));    
+    console.log(" ================= testSeo() ================== ");
 
-  await this.forum.seo('https://www.sonub.com/').then(() => this.error("Access seo page with empty key must be faield"), (e) => this.expect(e.message, ERROR.friendly_url_key_is_empty_on_seo, "SEO with empty key failed properly."));    
 
-    await this.forum.seo("https://www.sonub.com/p/" + "Wrong-friendly-url-test" )
+
+    await this.forum.seo('').then(() => this.error("Access seo page with empty url must be faield"), (e) => this.expect(e.message, ERROR.path_is_empty_on_seo, "SEO with empty path failed properly."));
+
+    await this.forum.seo('https://www.sonub.com/').then(() => this.error("Access seo page with empty key must be faield"), (e) => this.expect(e.message, ERROR.friendly_url_key_is_empty_on_seo, "SEO with empty key failed properly."));
+
+    await this.forum.seo("https://www.sonub.com/p/" + "Wrong-friendly-url-test")
       .then(() => this.error("Friedly url with wrong url must be failed"))
-      .catch(e => this.expect( e.message, ERROR.friendly_url_push_key_does_not_exists, "Getting friedly url info with wrong url properly failed."));
+      .catch(e => this.expect(e.message, ERROR.friendly_url_push_key_does_not_exists, "Getting friedly url info with wrong url properly failed."));
 
 
     // create a post.
     let subject = " #Friendly... URL, Test ..! ^^; " + (new Date()).getMinutes() + (new Date()).getSeconds();
-    let friendlySubject = this.forum.convertFriendlyUrlString( subject );
+    let friendlySubject = this.forum.convertFriendlyUrlString(subject);
 
     let post: POST = await this.testCreateAPost("abc", subject);
-    this.expect( post.friendly_url_key, friendlySubject, "testSeo() => Post Created: url: " + post.friendly_url_key);
+    this.expect(post.friendly_url_key, friendlySubject, "testSeo() => Post Created: url: " + post.friendly_url_key);
 
 
     let url = "https://www.sonub.com/p/" + post.friendly_url_key;
     console.log("Get post from friendly url: ", url);
-    let html = await this.forum.seo( url ).catch(e => e.messsage);
+    let html = await this.forum.seo(url).catch(e => e.messsage);
     const $html = cheerio.load(html)('html');
-    this.expect( post.subject, $html.find('title').text(), "Yes. subject maches" );
+    this.expect(post.subject, $html.find('title').text(), "Yes. subject maches");
 
 
     let post2: POST = await this.testCreateAPost("abc", subject, 'uid', 'secret', `Hi,
     I am content.
     This is content. Tt will be used as description. ^^; #@!^\nFeed\rCarret`);
-    this.expect( post2.friendly_url_key, post2.key + '-' + friendlySubject, "testSeo() => Post create another post: url: " + post2.friendly_url_key);
-    this.test( post2.friendly_url_key != post.friendly_url_key, "Friendly URL different from post and post2" );
-    
+    this.expect(post2.friendly_url_key, post2.key + '-' + friendlySubject, "testSeo() => Post create another post: url: " + post2.friendly_url_key);
+    this.test(post2.friendly_url_key != post.friendly_url_key, "Friendly URL different from post and post2");
+
 
     url = "https://www.sonub.com/p/" + post2.friendly_url_key;
     console.log("get post2 : ", url);
-    let html2 = await this.forum.seo( url ).catch(e => e.messsage);
+    let html2 = await this.forum.seo(url).catch(e => e.messsage);
     const $html2 = cheerio.load(html2)('html');
-    this.expect( post2.subject, $html2.find('title').text(), "Yes. subject maches" );
+    this.expect(post2.subject, $html2.find('title').text(), "Yes. subject maches");
 
 
-    console.log( html2 );
+    // console.log(html2);
 
   }
 
+
+
+  async testComment() {
+
+    console.log(" ================= testComment() ================== ");
+
+    let post: POST = await this.testCreateAPost('abc', 'This is subject');
+    //console.log(post);
+
+
+    let comment: COMMENT = { function: 'createComment', path: '', uid: this.userA.uid, secret: this.userA.secret, content: 'hi' };
+    await this.forum.api(comment)
+      .then(key => this.error('create comment with empty ancestors must be failed.'))
+      .catch(e => this.expect(e.message, ERROR.path_is_empty_on_create_comment, "create comment with emtpy path properly failed."));
+
+
+    comment.path = 'a/c/b';
+    await this.forum.api(comment)
+      .then(key => this.error('create comment must be failed with wrong paht.'))
+      .catch(e => this.expect(e.message, ERROR.post_not_found_by_that_key_on_create_comment, "comment create with wrong-path properly failed."));
+
+
+    // success.
+    comment.path = post.key + '/a/c/b';
+    let createdPath = await this.forum.api(comment)
+      .then(path => {
+        this.success("Comment created properly: " + path);
+        return path;
+      })
+      .catch(e => this.error('create comment must be success..'));
+
+
+
+
+    let created: COMMENT = await this.forum.getComment(createdPath);
+
+    // console.log(created);
+
+
+
+    let edit: COMMENT = {
+      function: 'editComment',
+      path: createdPath,
+      uid: this.userA.uid,
+      secret: this.userA.secret,
+      content: 'updated'
+    };
+
+    let bPath = edit.path;
+    let editedPath = await this.forum.api(edit)
+      .then(path => {
+        this.expect(path, bPath, "comment edited with proper path");
+        return path;
+      })
+      .catch(e => console.log(e));
+
+
+    let edited: COMMENT = await this.forum.getComment(editedPath);
+
+
+    this.expect(createdPath, edited.path, "path are equal after edit");
+    this.test(created.content != edited.content, "yes, content updated");
+    this.expect(edited.content, "updated", "yes, content is updated");
+
+
+
+    let del: COMMENT = {
+      function: 'deleteComment',
+      path: editedPath,
+      uid: this.userA.uid,
+      secret: this.userA.secret
+    };
+
+
+
+    let deletedPath = await this.forum.api(del)
+      .then(path => {
+        this.success("comment deleted");
+        return path;
+      })
+      .catch(e => console.log(e));
+
+    this.expect(createdPath, editedPath, "created Path and edited Path matches");
+    this.expect(editedPath, deletedPath, "deleted Path and edited Path matches");
+
+
+    let deletedComment = await this.forum.getComment(editedPath)
+      .then(data => this.expect(data, null, "comment null after get. it is properly deleted."))
+      .catch(e => console.log(e));
+
+
+
+    // create => comment => comment => comment
+
+
+    let fruit: POST = await this.testCreateAPost('abc', 'This is a fruit');
+    let apple: COMMENT = {
+      function: 'createComment',
+      path: fruit.key,
+      uid: this.userA.uid,
+      content: "This is blue apple."
+    };
+    let blueApplePath = await this.forum.createComment(apple)
+      .catch(e => this.error(e.message));
+
+    let blueApple: COMMENT = await this.forum.getComment(blueApplePath);
+    this.expect(apple.content, blueApple.content, "comment created. content matches: " + blueApplePath);
+
+
+    let smallBlueApple: COMMENT = {
+      function: 'createComment',
+      path: blueApplePath,
+      uid: this.userA.uid,
+      content: "This is small blue apple."
+    }
+
+    let smallBlueApplePath = await this.forum.createComment(smallBlueApple)
+      .catch(e => this.error(e.message));
+
+    // console.log("smallBlueApplePath: ", smallBlueApplePath);
+
+
+
+    let createdSmallBlueApple: COMMENT = await this.forum.getComment(smallBlueApplePath).catch(e => this.error(e.message));
+
+    let arr = createdSmallBlueApple.path.split('/');
+    let popSmallBlueAppleKey = arr.pop();
+    this.expect(arr.join('/'), blueApplePath, "yes, path matches");
+
+
+    let apples: COMMENT = await this.forum.getComment(blueApplePath);
+    // console.log(apples);
+
+    let childComment: COMMENT = apples[popSmallBlueAppleKey];
+    this.expect(createdSmallBlueApple.content, childComment.content, "Nested comment compare ok");
+
+
+
+
+
+
+
+
+
+
+
+
+  }
+  async testCommentsTreeToArray() {
+
+    let begin: POST = await this.testCreateAPost('abc', 'Begin');
+    // console.log(begin);
+
+    let p = begin.key;
+
+    console.log("Going to create comments for order test. it will take some time....");
+    let pathA = await this.createAComment( p, 'A' );
+    let pathB = await this.createAComment( p, 'B' );
+    let pathC = await this.createAComment( p, 'C' );
+
+    let pathBA = await this.createAComment( pathB, 'BA');
+    let pathBA1 = await this.createAComment( pathBA, 'BA1');
+    let pathBA2 = await this.createAComment( pathBA, 'BA2');
+    
+    let pathBA1A = await this.createAComment( pathBA1, "BA1A" );
+
+
+    let pathD = await this.createAComment( p, 'D' );
+    let pathD1 = await this.createAComment( pathD, 'D1' );
+    let pathD2 = await this.createAComment( pathD, 'D2' );
+    let pathD2A = await this.createAComment( pathD2, 'D2A' );
+    let pathD2A1 = await this.createAComment( pathD2A, 'D2A1' );
+    let pathD2A1A = await this.createAComment( pathD2A1, 'D2A1A' );
+    let pathD2A2 = await this.createAComment( pathD2A, 'D2A2' );
+    let pathD2B = await this.createAComment( pathD, 'D2B' );
+    let pathD3 = await this.createAComment( pathD, 'D3' );
+    let pathD4 = await this.createAComment( pathD, 'D4' );
+    
+
+
+
+
+    let pathE = await this.createAComment( p, 'E' );
+    let pathF = await this.createAComment( p, 'F' );
+    let pathG = await this.createAComment( p, 'G' );
+    let pathH = await this.createAComment( p, 'H' );
+    let pathI = await this.createAComment( p, 'I' );
+    let pathJ = await this.createAComment( p, 'J' );
+
+
+    let pathBA1B = await this.createAComment( pathBA1, "BA1B" );
+
+
+    let pathD2A1A1 = await this.createAComment( pathD2A1, 'D2A1A1' );
+    let pathD2A1A1a = await this.createAComment( pathD2A1A1, 'D2A1A1-a' );
+    let pathD2A1A1b = await this.createAComment( pathD2A1A1, 'D2A1A1-b' );
+    let pathD2A1A1c = await this.createAComment( pathD2A1A1, 'D2A1A1-c' );
+    let pathD2A1A1d = await this.createAComment( pathD2A1A1, 'D2A1A1-d' );
+
+    
+
+    let comments = await this.forum.getComment(begin.key).catch(e => this.error(e.message));
+    
+    this.expect( Object.keys(comments).length, 10, "root comments are created properly.");
+
+    let res = this.forum.commentsTreeToArray( comments );
+
+
+    // console.log(res);
+    let contents = [];
+
+    for ( let p of res ) {
+      contents.push( p.content );
+    }
+
+
+    contents.sort();
+    let match = true;
+    for ( let i = 0 ; i < contents.length; i ++ ) {
+      if ( contents[ i ] != res[i]['content'] ) {
+        console.log( `${contents[i]} != ${res[i]['content']}` );
+        match = false;
+      }
+    }
+
+    this.test( match, "All replies are in order.");
+    
+  }
+
+
+  createAComment(path, content): firebase.Promise<any> {
+    let BA1: COMMENT = {
+      function: 'createComment',
+      path: path,
+      uid: this.userA.uid,
+      content: content
+    };
+    return this.forum.createComment(BA1)
+      .catch(e => this.error(e.message));
+
+  }
 }
+
 
 
 new AppTest();

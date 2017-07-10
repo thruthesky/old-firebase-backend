@@ -8,6 +8,9 @@ export const POST_FRIENDLY_URL_PATH = 'forum/post/friendly-url';
 export const CATEGORY_POST_RELATION_PATH = 'forum/category-post-relation';
 export const ALL_CATEGORIES = 'all-categories';
 
+export const COMMENT_PATH = 'forum/comment';
+
+
 export interface CATEGORY {
     id: string;
     name?: string;
@@ -53,3 +56,22 @@ interface POST_COMMON {
 // export interface POST_EDIT extends POST_CREATE, KEY {};
 export interface POST extends REQUEST, UID, KEY, CATEGORIES, POST_COMMON { };
 export type POSTS = Array<POST>;
+
+
+
+
+export interface COMMENT {
+    function?: string;
+    // ancestors: Array<string>;
+    path: string;
+    uid: string;
+    secret?: string;
+    content?: string;
+    stamp?: number;
+    files?: Array<string>;
+
+
+
+    /// not exist in database.
+    depth?: number;
+};
