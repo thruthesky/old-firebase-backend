@@ -73,6 +73,7 @@ class AppTest {
       await this.testPost();
       await this.testApi();
       await this.testPostApi();
+      await this.testCommentSimple();
       await this.testComment();
       await this.testCommentsTreeToArray();
       await this.testFriendlyUrl();
@@ -808,6 +809,8 @@ class AppTest {
 
 
 
+
+
   async testComment() {
 
     console.log(" ================= testComment() ================== ");
@@ -1033,6 +1036,13 @@ class AppTest {
 
     this.test( match, "All replies are in order.");
     
+  }
+
+
+  async testCommentSimple() {
+    let p = await this.createAComment('-KohAgezTF-yX6skgQVM', 'Simple 1' ).catch( e => this.error( e.message ) );
+    this.test( p, "Comment created with: " + p);
+
   }
 
 
