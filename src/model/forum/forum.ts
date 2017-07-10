@@ -497,12 +497,17 @@ export class Forum extends Base {
     /**
      * Returns a promise with Comments.
      * @param path Path for the comment
+     * 
+     * @return a promise of comment/comments.
+     *      - It can return only a single comment
+     *      - Or it can return all nesting comments.
      */
     async getComments(path): firebase.Promise<any> {
         // console.log("getComment: ", path);
         if (this.isEmpty(path)) return this.error(ERROR.empty_path_on_get_comment);
         return this.comment().child(path).once('value').then(snap => snap.val());
     }
+
 
 
 
