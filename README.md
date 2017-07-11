@@ -240,6 +240,10 @@ if ( ! this.app.user.profile.email ) this.app.go('/', "You are visiting this pag
 * And sets the user profile data to `UserService.profile` property.
 * And re-render page, ngZone.run(), to refresh/update the user profile information into view.
 
+* When a user logs in, `onAuthStateChanged()` will be called soon.
+  * When `getProfile()` will be called immediately in `onAuthStateChanged()`
+  * So, you don't have to call `getProfile()` by userself unless user changes his profile information.
+
 component class) To get/load user profile data from database.
 
 ````

@@ -1,6 +1,8 @@
 import * as firebase from 'firebase';
 
 import { SECRET_KEY_PATH } from './../../define';
+import { ERROR } from './../error/error';
+
 
 /**
  * This is not a service. You cannot inject.
@@ -30,6 +32,23 @@ export class Base {
         this.root = root;
         return this;
     }
+
+
+    /////// paths
+
+
+    userProfile( uid ): firebase.database.Reference {
+        // if (this.isEmpty(uid)) return this.error( ERROR.uid_is_empty );
+        return this.root.ref.child('user/profile').child(uid);
+    }
+
+
+
+
+    isEmpty(obj) {
+        return obj === void 0 || !obj;
+    }
+
 
 
 

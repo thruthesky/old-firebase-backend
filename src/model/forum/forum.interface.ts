@@ -48,7 +48,9 @@ interface POST_COMMON {
     files?: Array<string>;              /// upload file information.
 
 
-    date?: string;                      /// this is not exist in database.
+
+    comments?: any;                     /// dynamic contents.
+    user?: any;                         /// dynamic contents.
 
 }
 
@@ -74,4 +76,7 @@ export interface COMMENT {
 
     /// not exist in database.
     depth?: number;
+    user?: any;
 };
+
+export type COMMENTS = Array<COMMENT>;

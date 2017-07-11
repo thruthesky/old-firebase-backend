@@ -197,11 +197,6 @@ export class Forum extends Base {
         return this.category(category).once('value').then(s => s.val());
     }
 
-    isEmpty(category) {
-        return category === void 0 || !category;
-    }
-
-
 
 
     ////////////////////////////////////////////////////////
@@ -872,9 +867,9 @@ export class Forum extends Base {
 
     sanitizePost(post: POST): POST {
 
-        let d = new Date(post.stamp * 1000);
+        // let d = new Date(post.stamp * 1000);
 
-        post.date = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate();
+        // post.date = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate();
 
         return post;
     }
