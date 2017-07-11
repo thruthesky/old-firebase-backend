@@ -355,7 +355,7 @@ export class Forum extends Base {
     setPostData(ref: firebase.database.Reference, post: POST, old_post?: POST): firebase.Promise<any> {
         post.key = ref.key;
         // console.log('ref: ', ref.toString());
-        post.stamp = Math.round((new Date()).getTime() / 1000);
+        post.stamp = (new Date()).getTime();
         return ref.set(post)
             .then(() => this.setCategoryPostRelation(post.key, post, old_post)) // category post relation
             .then(() => post.key);
