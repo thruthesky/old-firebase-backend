@@ -17,10 +17,13 @@ export { Forum } from './src/model/forum/forum';
 export { ERROR, isError } from './src/model/error/error';
 
 
-export { CATEGORY, CATEGORIES, POST, POSTS, ALL_CATEGORIES, COMMENT, COMMENTS } from './src/model/forum/forum.interface';
+export {
+    CATEGORY, CATEGORIES, POST, POSTS, ALL_CATEGORIES, COMMENT, COMMENTS,
+    SOCIAL_PROFILE, USER_REGISTER, USER_UPDATE, PROFILE
+} from './src/interface';
 
 import { UserService } from './src/model/user/user.service';
-export { UserService, SOCIAL_PROFILE, USER_REGISTER, USER_UPDATE, PROFILE } from './src/model/user/user.service';
+export { UserService} from './src/model/user/user.service';
 
 @NgModule({
     providers: [ ForumService, UserService, ApiService, TestService ],

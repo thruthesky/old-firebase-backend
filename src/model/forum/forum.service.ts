@@ -20,29 +20,6 @@ export class ForumService extends Forum {
 
 
 
-    /**
-     * 
-     * Use this to live-update.
-     * 
-     * @code
-
-        this.forum.observeCategory().subscribe(res => {
-            console.log(res);
-            this.categories = res;
-        });
-
-     * @endcode
-     */
-    // observeCategory() {
-    //     // return this.af.list( this.categoryPath );
-
-    //     // this.root.child( this.categoryPath ).on('value', snapshot => {
-    //     //     callback( snapshot.val() );
-    //     // });
-
-
-    // }
-
     
 
 

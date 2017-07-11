@@ -1,7 +1,8 @@
 
 
-
-
+/**
+ * Paths
+ */
 export const CATEGORY_PATH = 'forum/category';
 export const POST_DATA_PATH = 'forum/post/data';
 export const POST_FRIENDLY_URL_PATH = 'forum/post/friendly-url';
@@ -10,6 +11,52 @@ export const ALL_CATEGORIES = 'all-categories';
 
 export const COMMENT_PATH = 'forum/comment';
 
+
+
+
+
+/**
+ * User
+ */
+
+
+/**
+ * This is user common data. This data structure has the same strcuture of database - /user/profile
+ */
+interface EMAIL {
+    email: string;              // this cannot be optional.
+}
+
+interface PASSWORD {
+    password: string;
+}
+
+export interface USER_COMMON_DATA {
+    providerId?: string;
+    name?: string;              // displayName
+    photoURL?: string;
+    gender?: string;
+    birthday?: string;
+    mobile?: string;
+}
+
+
+
+export interface USER_REGISTER extends EMAIL, PASSWORD, USER_COMMON_DATA { }
+export interface USER_UPDATE extends USER_COMMON_DATA { };
+
+export interface SOCIAL_PROFILE extends EMAIL, USER_COMMON_DATA {
+    uid: string;
+    password?: string;
+};
+
+export interface PROFILE extends SOCIAL_PROFILE {};
+
+
+
+/**
+ * Forum
+ */
 
 export interface CATEGORY {
     id: string;

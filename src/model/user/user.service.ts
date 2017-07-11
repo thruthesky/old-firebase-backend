@@ -12,38 +12,8 @@ import { SECRET_KEY_PATH, PROFILE_PATH, PROFILE_KEY } from './../../define';
 
 import { Base } from './../base/base';
 
+import { USER_COMMON_DATA, USER_REGISTER } from './../../interface';
 
-/**
- * This is user common data. This data structure has the same strcuture of database - /user/profile
- */
-interface EMAIL {
-    email: string;              // this cannot be optional.
-}
-
-interface PASSWORD {
-    password: string;
-}
-
-interface USER_COMMON_DATA {
-    providerId?: string;
-    name?: string;              // displayName
-    photoURL?: string;
-    gender?: string;
-    birthday?: string;
-    mobile?: string;
-}
-
-
-
-export interface USER_REGISTER extends EMAIL, PASSWORD, USER_COMMON_DATA { }
-export interface USER_UPDATE extends USER_COMMON_DATA { };
-
-export interface SOCIAL_PROFILE extends EMAIL, USER_COMMON_DATA {
-    uid: string;
-    password?: string;
-};
-
-export interface PROFILE extends SOCIAL_PROFILE {};
 
 
 @Injectable()
@@ -359,7 +329,9 @@ export class UserService extends Base {
      * @param uid User uid
      */
     getUserProfile( uid: string ) : firebase.Promise<any> {
-        if ( ! this.uid ) return this.error( ERROR.uid_is_empty );
+        if ( ! uid ) {
+            return this.error( ERROR.uid_is_empty );
+        }
         return this.userProfile( uid ).once('value').then( snap => snap.val());
     }
 

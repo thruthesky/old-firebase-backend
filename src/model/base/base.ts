@@ -39,7 +39,7 @@ export class Base {
 
     userProfile( uid ): firebase.database.Reference {
         // if (this.isEmpty(uid)) return this.error( ERROR.uid_is_empty );
-        return this.root.ref.child('user/profile').child(uid);
+        return this.root.ref.child('user').child('profile').child(uid);
     }
 
 

@@ -5,10 +5,11 @@ import * as firebase from 'firebase';
 import {
     POST,
     ApiService,
-    ERROR
+    ERROR,
+    USER_REGISTER
 } from './../../../firebase-backend.module';
 
-import { UserService, USER_REGISTER } from './../user/user.service';
+import { UserService } from './../user/user.service';
 import { ForumService } from './../forum/forum.service';
 
 
