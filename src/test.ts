@@ -843,7 +843,7 @@ class AppTest {
 
 
 
-    let created: COMMENT = await this.forum.getComment(createdPath);
+    let created: COMMENT = await this.forum.getComments(createdPath);
 
     // console.log(created);
 
@@ -866,7 +866,7 @@ class AppTest {
       .catch(e => console.log(e));
 
 
-    let edited: COMMENT = await this.forum.getComment(editedPath);
+    let edited: COMMENT = await this.forum.getComments(editedPath);
 
 
     this.expect(createdPath, edited.path, "path are equal after edit");
@@ -895,7 +895,7 @@ class AppTest {
     this.expect(editedPath, deletedPath, "deleted Path and edited Path matches");
 
 
-    let deletedComment = await this.forum.getComment(editedPath)
+    let deletedComment = await this.forum.getComments(editedPath)
       .then(data => this.expect(data, null, "comment null after get. it is properly deleted."))
       .catch(e => console.log(e));
 
@@ -914,7 +914,7 @@ class AppTest {
     let blueApplePath = await this.forum.createComment(apple)
       .catch(e => this.error(e.message));
 
-    let blueApple: COMMENT = await this.forum.getComment(blueApplePath);
+    let blueApple: COMMENT = await this.forum.getComments(blueApplePath);
     this.expect(apple.content, blueApple.content, "comment created. content matches: " + blueApplePath);
 
 
@@ -932,14 +932,14 @@ class AppTest {
 
 
 
-    let createdSmallBlueApple: COMMENT = await this.forum.getComment(smallBlueApplePath).catch(e => this.error(e.message));
+    let createdSmallBlueApple: COMMENT = await this.forum.getComments(smallBlueApplePath).catch(e => this.error(e.message));
 
     let arr = createdSmallBlueApple.path.split('/');
     let popSmallBlueAppleKey = arr.pop();
     this.expect(arr.join('/'), blueApplePath, "yes, path matches");
 
 
-    let apples: COMMENT = await this.forum.getComment(blueApplePath);
+    let apples: COMMENT = await this.forum.getComments(blueApplePath);
     // console.log(apples);
 
     let childComment: COMMENT = apples[popSmallBlueAppleKey];
@@ -1010,7 +1010,7 @@ class AppTest {
 
     
 
-    let comments = await this.forum.getComment(begin.key).catch(e => this.error(e.message));
+    let comments = await this.forum.getComments(begin.key).catch(e => this.error(e.message));
     
     this.expect( Object.keys(comments).length, 10, "root comments are created properly.");
 
