@@ -13,6 +13,9 @@ export { ForumService } from './src/model/forum/forum.service';
 import { Forum } from './src/model/forum/forum';
 export { Forum } from './src/model/forum/forum';
 
+import { PushMessageService } from './src/model/push-message/push-message';
+export { PushMessageService } from './src/model/push-message/push-message';
+
 
 export { ERROR, isError } from './src/model/error/error';
 
@@ -26,7 +29,7 @@ import { UserService } from './src/model/user/user.service';
 export { UserService} from './src/model/user/user.service';
 
 @NgModule({
-    providers: [ ForumService, UserService, ApiService, TestService ],
+    providers: [ ForumService, UserService, ApiService, TestService, PushMessageService],
 })
 export class FirebaseBackendModule {}
 
