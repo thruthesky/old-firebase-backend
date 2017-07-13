@@ -55,8 +55,8 @@ export class Base {
     randomString(seed = '') {
         let d = new Date();
         let unique = seed + '-' + d.getTime() + '-';
-        var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        for (var i = 0; i < 8; i++) {
+        let possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        for (let i = 0; i < 8; i++) {
             unique += possible.charAt(Math.floor(Math.random() * possible.length));
         }
         return unique;
@@ -131,13 +131,13 @@ export class Base {
      * 
      */
     generateSecretKey(uid: string): firebase.Promise<any> {
-        console.log(`generateSecretKey() for uid: ${uid}`);
+        // console.log(`generateSecretKey() for uid: ${uid}`);
         return this.getSecretKey(uid)
             .then(secretkey => {
-                console.log("generateSecretKey() => getSecretKey() : ", secretkey);
+                // console.log("generateSecretKey() => getSecretKey() : ", secretkey);
                 if (secretkey) return secretkey;
                 else {
-                    console.log(`Secret key not exist. going to set`);
+                    // console.log(`Secret key not exist. going to set`);
                     return this.setSecretKey(uid);
                 }
             });

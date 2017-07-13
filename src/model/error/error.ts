@@ -83,7 +83,10 @@ export const ERROR = {
     path_is_empty_on_create_comment: 'path_is_empty_on_create_comment',
     empty_path_on_get_comment: 'empty_path_on_get_comment',
     comment_path_empty_on_delete_comment: 'comment_path_empty_on_delete_comment',
-    permission_denied_not_your_comment_on_delete_comment: 'permission_denied_not_your_comment_on_delete_comment'
+    permission_denied_not_your_comment_on_delete_comment: 'permission_denied_not_your_comment_on_delete_comment',
+
+
+    push_token_is_empty: 'push_token_is_empty'
 };
 
 

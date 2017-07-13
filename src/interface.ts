@@ -1,4 +1,11 @@
 
+/**
+ * Defines
+ */
+
+export const PROFILE_KEY = 'user-profile-key';
+
+
 
 /**
  * Paths
@@ -8,8 +15,13 @@ export const POST_DATA_PATH = 'forum/post/data';
 export const POST_FRIENDLY_URL_PATH = 'forum/post/friendly-url';
 export const CATEGORY_POST_RELATION_PATH = 'forum/category-post-relation';
 export const ALL_CATEGORIES = 'all-categories';
-
 export const COMMENT_PATH = 'forum/comment';
+
+export const USER_PUSH_TOKEN_PATH = 'user/push-token';
+
+
+export const SECRET_KEY_PATH = 'user/secret';
+export const PROFILE_PATH = 'user/profile';
 
 
 
@@ -24,7 +36,7 @@ export const COMMENT_PATH = 'forum/comment';
  * This is user common data. This data structure has the same strcuture of database - /user/profile
  */
 interface EMAIL {
-    email: string;              // this cannot be optional.
+    email?: string;
 }
 
 interface PASSWORD {
@@ -46,7 +58,7 @@ export interface USER_REGISTER extends EMAIL, PASSWORD, USER_COMMON_DATA { }
 export interface USER_UPDATE extends USER_COMMON_DATA { };
 
 export interface SOCIAL_PROFILE extends EMAIL, USER_COMMON_DATA {
-    uid: string;
+    uid?: string;
     password?: string;
 };
 
@@ -127,3 +139,17 @@ export interface COMMENT {
 };
 
 export type COMMENTS = Array<COMMENT>;
+
+
+/**
+ * Push Message
+ */
+
+export interface PUSH_MESSAGE {
+    token?: string;
+    uid: string;
+    title: string;
+    body: string;
+    url?: string;
+    icon?: string;
+};
