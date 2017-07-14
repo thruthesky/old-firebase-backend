@@ -2,6 +2,7 @@
 *.map
 *.js
 etc/*.js
+etc/service-key.ts
 dist/
 node_modules/
 .vscode/
