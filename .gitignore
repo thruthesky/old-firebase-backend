@@ -1,8 +1,8 @@
 
 *.map
 *.js
-etc/*.js
-etc/service-key.ts
+/src/etc/*.js
+/src/etc/service-key.ts
 dist/
 node_modules/
 .vscode/
