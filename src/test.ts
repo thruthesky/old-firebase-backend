@@ -1,5 +1,6 @@
 import * as admin from "firebase-admin";
 import serviceAccount from "./etc/service-key";
+
 // Admin Key initialization. needs to be done only once. (초기화. 중요. 앱에서 한번만 초기화 해야 한다.)
 const app = admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -18,8 +19,6 @@ const cheerio = require('cheerio');
 const argv = require('yargs').argv;
 
 interface POST_REQUEST { function: string, data: POST };
-
-
 
 function datetime() {
   let d = new Date();
@@ -118,7 +117,7 @@ class AppTest {
    * 
    */
   async prepareTest() {
-    console.log("\n =========================== testMethods() =========================== ")
+    console.log("\n =========================== prepareTest() =========================== ")
 
     // let re = this.forum.functionName({ function: '' });
     // this.expect(re, 'create', `functions name is empty`);
@@ -136,6 +135,7 @@ class AppTest {
 
 
 
+    console.log(`prepareTest() ==> generateSecretKey of ${this.userA.uid}` );
     await this.forum.generateSecretKey(this.userA.uid)
       .then(secret => {
         this.userA.secret = secret;

@@ -86,7 +86,8 @@ export const ERROR = {
     permission_denied_not_your_comment_on_delete_comment: 'permission_denied_not_your_comment_on_delete_comment',
 
 
-    push_token_is_empty: 'push_token_is_empty'
+    push_token_is_empty: 'push_token_is_empty',
+    api_wrong_class_name: 'api_wrong_class_name'
 };
 
 

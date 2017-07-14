@@ -1,6 +1,6 @@
 import * as firebase from 'firebase';
 
-import { SECRET_KEY_PATH } from './../../define';
+import { SECRET_KEY_PATH } from './../../interface';
 import { ERROR } from './../error/error';
 
 
@@ -91,8 +91,9 @@ export class Base {
      *          or a string of promise with a secret key of the user.
      */
     getSecretKey(uid: string): firebase.Promise<any> {
-
         //
+        if ( ! uid ) return this.error( ERROR.uid_is_empty );
+        console.log("Base::getSecretKey of ${uid}");
         
         //console.log(`Going to get key of ${uid}`);
         return this.root.child(SECRET_KEY_PATH).child(uid).once('value')
@@ -131,7 +132,8 @@ export class Base {
      * 
      */
     generateSecretKey(uid: string): firebase.Promise<any> {
-        // console.log(`generateSecretKey() for uid: ${uid}`);
+        console.log(`Base::generateSecretKey() for uid: ${uid}`);
+        if ( ! uid ) return this.error( ERROR.uid_is_empty );
         return this.getSecretKey(uid)
             .then(secretkey => {
                 // console.log("generateSecretKey() => getSecretKey() : ", secretkey);

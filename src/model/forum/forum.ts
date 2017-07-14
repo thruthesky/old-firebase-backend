@@ -901,8 +901,7 @@ export class Forum extends Base {
 
         if (params === void 0) return this.error(ERROR.requeset_is_empty);
         let func = params['function'];
-        if (func === void 0) return this.error(ERROR.api_function_is_not_provided);
-        if (!func) return this.error(ERROR.api_function_name_is_empty);
+        
         if (allowedApiFunctions.indexOf(func) == -1) return this.error(ERROR.api_that_function_is_not_allowed);
 
         if (!params['uid']) return this.error(ERROR.uid_is_empty);
