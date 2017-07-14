@@ -13,6 +13,9 @@ const allowedApiFunctions = [
     'createComment', 'editComment', 'deleteComment'
 ];
 
+
+
+
 /**
  * This is not a service. You cannot inject.
  */
@@ -55,7 +58,7 @@ export class Forum extends Base {
      *              - other errors.
      */
     createCategory(data: CATEGORY): firebase.Promise<any> {
-        if (this.checkKey(data.id)) return firebase.Promise.reject(new Error(ERROR.malformed_key));
+        if (this.checkKey(data.id)) return this.error(ERROR.malformed_key);
         return this.categoryExists(data.id)
             .then(re => {
                 throw new Error(ERROR.category_exists); // 여기에 throw 하면 요 밑 .catch() 에서 받는다. 따라서 .catch() 에서 category_exist 를 받으면 에러를 리턴하고, 아니면 생성을 한다.
@@ -100,7 +103,7 @@ export class Forum extends Base {
      */
     editCategory(data: CATEGORY): firebase.Promise<any> {
         if (this.isEmpty(data.id)) return this.error(ERROR.category_id_empty);
-        if (this.checkKey(data.id)) return firebase.Promise.reject(new Error(ERROR.malformed_key));
+        if (this.checkKey(data.id)) return this.error(ERROR.malformed_key);
         return this.categoryExists(data.id).then(re => {
             return this.setCategory(data);
         });
@@ -234,7 +237,7 @@ export class Forum extends Base {
      * @param post Post data to create
      * @return a promise with post key.
      */
-    async createPost(post: POST): firebase.Promise<any> {
+    async createPost(post: POST): Promise<any> {
         if (this.checkPost(post)) return this.error(this.checkPost(post));
         if (post.key) return this.error(ERROR.post_key_exists_on_create);
         await this.categoriesExist(post.categories);
@@ -295,7 +298,7 @@ export class Forum extends Base {
      * 
      * @param post 
      */
-    async editPost(post: POST): firebase.Promise<any> {
+    async editPost(post: POST): Promise<any> {
         if (this.checkPost(post)) return this.error(this.checkPost(post));
         if (!post.key) return this.error(ERROR.post_key_empty);
 
@@ -317,7 +320,7 @@ export class Forum extends Base {
      * @param o - options to delete a post.
      * @return a promise with post key.
      */
-    async deletePost(o: { uid: string, key: string }): firebase.Promise<any> {
+    async deletePost(o: { uid: string, key: string }): Promise<string> {
 
         if (this.isEmpty(o.uid)) return this.error(ERROR.uid_is_empty); /// uid has already check by 'api' but for direct call.
         if (this.isEmpty(o.key)) return this.error(ERROR.post_key_empty);
@@ -366,7 +369,7 @@ export class Forum extends Base {
         return this.postData(key).once('value').then(s => {
             let post = s.val();
             if (post) return post;
-            else throw new Error(ERROR.post_not_found_by_that_key);// this.error( ERROR.post_not_found_by_that_key );
+            else throw new Error(ERROR.post_not_found_by_that_key); // this.error( ERROR.post_not_found_by_that_key );
         });
     }
     /**
@@ -416,7 +419,7 @@ export class Forum extends Base {
      * 
      * @return a promise with newly created comment path ( full path )
      */
-    async createComment(comment: COMMENT): firebase.Promise<any> {
+    async createComment(comment: COMMENT): Promise<any> {
 
         // if ( comment.path === void 0 ) return this.error( ERROR.path_is_undefined_on_comment_create );
         // if ( ! comment.ancestors ) return this.error( ERROR.path_is_empty_string );
@@ -451,8 +454,7 @@ export class Forum extends Base {
      * @param comment Comment to edit
      * @return a promise with comment path ( full path )
      */
-    async editComment(comment: COMMENT): firebase.Promise<any> {
-
+    async editComment(comment: COMMENT): Promise<string> {
 
         let path = comment.path;
 
@@ -480,7 +482,7 @@ export class Forum extends Base {
      * @param path Path of comment
      * @return a promise of uid.
      */
-    async getCommentUid(path): firebase.Promise<any> {
+    async getCommentUid(path): Promise<string> {
         if (this.isEmpty(path)) return this.error(ERROR.empty_path_on_get_comment_uid);
         return this.comment().child(path).child('uid').once('value').then(snap => {
             if (snap.val()) return snap.val();
@@ -497,7 +499,7 @@ export class Forum extends Base {
      *      - It can return only a single comment
      *      - Or it can return all nesting comments.
      */
-    async getComments(path): firebase.Promise<any> {
+    getComments(path): firebase.Promise<any> {
         // console.log("getComment: ", path);
         if (this.isEmpty(path)) return this.error(ERROR.empty_path_on_get_comment);
         return this.comment().child(path).once('value').then(snap => snap.val());
@@ -511,7 +513,7 @@ export class Forum extends Base {
      * @param o - options to delete a post.
      * @return a promise with deleted comment path.
      */
-    async deleteComment(comment: COMMENT): firebase.Promise<any> {
+    async deleteComment(comment: COMMENT): Promise<string> {
 
 
         if (this.isEmpty(comment.path)) return this.error(ERROR.comment_path_empty_on_delete_comment);
@@ -631,7 +633,7 @@ export class Forum extends Base {
                 if (s.val()) return true;
                 else {
                     this.setLastErrorMessage(`Category ${category} does not exist.`);
-                    return firebase.Promise.reject(new Error(ERROR.category_not_exist));
+                    return this.error(ERROR.category_not_exist);
                 }
             });
     }
@@ -912,8 +914,7 @@ export class Forum extends Base {
             .then(key => {          /// secret key check for security.
                 if (key === params['secret']) {
                     return key;
-                }
-                else return this.error(ERROR.secret_does_not_match);
+                } else return this.error(ERROR.secret_does_not_match);
             })
             .then(key => this[func](params));
 
@@ -953,12 +954,11 @@ export class Forum extends Base {
                     // console.log("postKey is null. key= ", key);
                     return this.error(ERROR.friendly_url_push_key_does_not_exists);
                 }
-                return this.postData(postKey).once('value').then(snap => {
-                    let key = snap.key;
-                    let post = snap.val();
+                return this.postData(postKey).once('value').then(snapPostData => {
+                    //let key = snapPostData.key;
+                    let post = snapPostData.val();
                     // console.log("post: ", post);
-                    let html = this.getSeoHtml(post);
-                    return html;
+                    return this.getSeoHtml(post);
                 });
             })
 
@@ -980,8 +980,7 @@ export class Forum extends Base {
 
         if (post === null) {
             posts = await this.page({ size: 32 });
-        }
-        else {
+        } else {
 
             title = post.subject ? post.subject : null;
             description = post.content ? post.content.replace(/\s+/g, ' ').substring(0, 255) : null;
@@ -996,8 +995,8 @@ export class Forum extends Base {
 
         }
 
-        for (let post of posts) {
-            links += `<a href="https://www.sonub.com/p/${post.friendly_url_key}">${post.subject}</a>`;
+        for (let p of posts) {
+            links += `<a href="https://www.sonub.com/p/${p.friendly_url_key}">${p.subject}</a>`;
         }
 
         let html = `<!doctype html>

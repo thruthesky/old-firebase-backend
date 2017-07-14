@@ -1,22 +1,25 @@
 {
-    "exclude": [
-        "node_modules"
-    ],
-    "compilerOptions": {
-        "target": "es5",
-        "watch": true,
-        "sourceMap": true,
-        "declaration": false,
-        "noImplicitAny": false,
-        "removeComments": true,
-        "noLib": false,
-        "emitDecoratorMetadata": true,
-        "experimentalDecorators": true
-    },
-    "files": [
-        "node_modules/typescript/lib/lib.es6.d.ts",
-        "test.ts",
-        "index.ts",
-        "test-seo.ts"
+  "exclude": [
+    "node_modules"
+  ],
+  "compilerOptions": {
+    "target": "es5",
+    "watch": true,
+    "sourceMap": true,
+    "declaration": false,
+    "noImplicitAny": false,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "lib": [
+      "es2016",
+      "dom"
     ]
+  },
+  "files": [
+    "node_modules/typescript/lib/lib.es6.d.ts",
+    "test.ts",
+    "index.ts",
+    "test-seo.ts"
+  ]
 }
