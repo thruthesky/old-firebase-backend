@@ -11,7 +11,7 @@ const db = app.database();
 //import { Post, POST } from './model/post';
 
 import { Forum } from './model/forum/forum';
-import { POST, CATEGORY, ALL_CATEGORIES, COMMENT } from './model/forum/forum.interface';
+import { POST, CATEGORY, ALL_CATEGORIES, COMMENT } from './interface';
 import { ERROR, isError } from './model/error/error';
 import * as chalk from 'chalk';
 const cheerio = require('cheerio');
