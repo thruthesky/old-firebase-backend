@@ -882,24 +882,27 @@ export class Forum extends Base {
      * 
      * @attention Do not call "this.app.forum.api( comment ).then(...)" in front-end. It will give you permission denied.
      * 
-     * @note the error check here is duplicated from base.ts. But leave it as it is because the error checkup is needed by unit testing.
-     *          other classes like 'AdvertisementTool' does not have error check like below since they test with 'Backend'.
+     * @note This method itself and the error check ups here are no longer needed. All necessary codes are in base.ts.
+     *              This exists here for backward compatiblities of unit testing.
+     *              And it is meant to be removed as quickly as it could.
+     *             
      * 
      * @todo check if 'function not exists' properly work.
+     * 
      */
     api(params): firebase.Promise<any> {
 
         if (params === void 0) return this.error(ERROR.requeset_is_empty);
-        let func = params['function'];
+        let route = params['route'];
 
         /// This tests must be here. It is being called from 'test.js' and 'index.js'
-        if (func === void 0) return this.error(ERROR.api_function_is_not_provided);
-        if (!func) return this.error(ERROR.api_function_name_is_empty);
+        if (route === void 0) return this.error(ERROR.api_route_is_not_provided);
+        if (!route) return this.error(ERROR.api_route_name_is_empty);
 
 
-        let f = this.getClassFunction(func);
+        let f = this.getClassMethod(route);
 
-        if (allowedApiFunctions.indexOf(f.functionName) == -1) return this.error(ERROR.api_that_function_is_not_allowed_in_forum, func);
+        if (allowedApiFunctions.indexOf(f.methodName) == -1) return this.error(ERROR.api_that_route_is_not_allowed, route);
 
         if (!params['uid']) return this.error(ERROR.uid_is_empty);
         if (this.checkKey(params.uid)) return this.error(ERROR.malformed_key);
@@ -912,15 +915,15 @@ export class Forum extends Base {
                     return key;
                 } else return this.error(ERROR.secret_does_not_match);
             })
-            .then(key => this[f.functionName](params));
+            .then(key => this[f.methodName](params));
 
     }
 
-    
 
 
 
-    // functionName(params) {
+
+    // methodName(params) {
     //     let func = '';
     //     if (params['function']) func = params['function'];
     //     else {

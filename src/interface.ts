@@ -30,7 +30,7 @@ export const ADVERTISEMENT_PATH = 'advertisement';
 
 export interface ERROR_INFO {
     code: string;
-    message?: string;
+    extra?: string;
 }
 
 
@@ -90,7 +90,7 @@ export type CATEGORIES = Array<CATEGORY>;
 
 
 interface REQUEST {
-    function?: string;
+    route?: string;
     secret: string;
 }
 
@@ -131,7 +131,7 @@ export type POSTS = Array<POST>;
 
 
 export interface COMMENT {
-    function?: string;
+    route?: string;
     // ancestors: Array<string>;
     path: string;
     uid: string;

@@ -26,9 +26,8 @@ import * as chalk from 'chalk';
 const cheerio = require('cheerio');
 const argv = require('yargs').argv;
 
-interface POST_REQUEST { function: string, data: POST };
 
-function datetime() {
+const datetime = () => {
   let d = new Date();
   return d.getMonth() + '-' + d.getDate() + ':' + d.getHours() + ':' + d.getMinutes() + ':' + d.getSeconds();
 }
@@ -151,19 +150,7 @@ class AppTest {
   async prepareTest() {
     console.log("\n =========================== prepareTest() =========================== ")
 
-    // let re = this.forum.functionName({ function: '' });
-    // this.expect(re, 'create', `functions name is empty`);
-
-    // re = this.forum.functionName({ function: 'edit' });
-    // this.expect(re, 'edit', `functions name is empty`);
-
-    // re = this.forum.functionName({ function: 'delete' });
-    // this.expect(re, 'delete', `functions name is empty`);
-
-
-    // re = this.forum.functionName({ function: 'wrong' });
-    // this.expect(re, 'wrong', `functions name is empty`);
-
+    
 
 
 
@@ -540,14 +527,16 @@ class AppTest {
   async testApi() {
     console.log("\n =========================== testApi() =================================");
 
-    await this.forum.api([])
-      .catch(e => this.expect(e.message, ERROR.api_function_is_not_provided, "api call without function properly failed."));
-    await this.forum.api({ function: '' })
-      .catch(e => this.expect(e.message, ERROR.api_function_name_is_empty, "api call with empty function anme properly faield"));
-
-    await this.forum.api({ function: 'wrong' })
+    await this.forum.api({})
       .catch(e => {
-        this.expect(this.base.getErrorCode(e), ERROR.api_that_function_is_not_allowed_in_forum, "api call with wrong function name properly failed");
+        this.expect(e.message, ERROR.api_route_is_not_provided, "api call without route properly failed.");
+      });
+    await this.forum.api({ route: '' })
+      .catch(e => this.expect(e.message, ERROR.api_route_name_is_empty, "api call with empty route name properly faield"));
+
+    await this.forum.api({ route: 'wrong' })
+      .catch(e => {
+        this.expect(this.base.getErrorCode(e), ERROR.api_that_route_is_not_allowed, "api call with wrong route name properly failed");
       });
 
   }
@@ -556,9 +545,7 @@ class AppTest {
 
     console.log("\n =========================== testPostApi() =========================== ");
 
-    // await this.forum.postApi({}).catch(e => this.expect(e.message, ERROR.function_is_not_provided, 'function not providing test.'));
-    //    await this.forum.postApi({ function: 'no-function-name' }).catch(e => this.expect(e.message, ERROR.requeset_data_is_empty, 'function is give but data is not given.'));
-
+    
     this.userA.secret = await this.forum.getSecretKey(this.userA.uid)
       .then(key => {
         this.success(`Got key: ${key}`);
@@ -571,18 +558,18 @@ class AppTest {
 
 
     await this.forum.api({
-      function: "wrong-function-name",
+      route: "wrong-route-name",
       uid: this.userA.uid,
       secret: this.userA.secret
     })
-      .then(() => { this.error("wrong function name must fail.") })
-      .catch(e => this.expect(this.base.errcode(e), ERROR.api_that_function_is_not_allowed_in_forum, 'Wrong function name test:' + this.base.errmsg(e)));
+      .then(() => { this.error("wrong route name must fail.") })
+      .catch(e => this.expect(this.base.errcode(e), ERROR.api_that_route_is_not_allowed, 'Wrong route name test:' + this.base.errextra(e)));
 
 
 
     // create edit. expect error. 'cause no category.
     let post: POST = {
-      function: 'createPost',
+      route: 'createPost',
       subject: 'post create test by api',
       content: 'This is content',
       categories: [],
@@ -614,14 +601,14 @@ class AppTest {
     // expect success.
     post['categories'] = ['abc', 'flower'];
     let key = await this.forum.api(post)
-      .then(key => { this.success("Post create with postApi(function:create) success . key: " + key); return key; })
+      .then(key => { this.success("Post create with postApi(route:create) success . key: " + key); return key; })
       .catch(e => this.error("A post should be created."));
 
 
     // console.log("KEY ===> ", key);
 
     /// edit with no category
-    post.function = 'editPost';
+    post.route = 'editPost';
     post.key = key;
     post.categories = [];
     post.subject = "Subject updated...!";
@@ -645,9 +632,9 @@ class AppTest {
         this.success("Post edit success with: " + key);
         this.forum.getPostData(key).then((p: POST) => {
 
-          this.expect(p.key, post.key, "postApi(function:edit) key match");
-          this.expect(p.subject, post.subject, "Subject edit with postApi(function:eidt) success.");
-          this.expect(p.content, post.content, "Content edit with postApi(function:eidt) success.");
+          this.expect(p.key, post.key, "postApi(route:edit) key match");
+          this.expect(p.subject, post.subject, "Subject edit with postApi(route:eidt) success.");
+          this.expect(p.content, post.content, "Content edit with postApi(route:eidt) success.");
 
 
           this.forum.categoryPostRelation().child('flower').child(p.key).once('value')
@@ -670,7 +657,7 @@ class AppTest {
 
 
     /// delete post
-    newData.function = 'deletePost';
+    newData.route = 'deletePost';
     newData.key = '-wrong-post-key';
     await this.forum.api(newData)
       .then(() => this.error("Calling postApi for delete with wrong post key must be failed."))
@@ -707,14 +694,14 @@ class AppTest {
 
     console.log("\n ====================== testBackendPost() =========================");
     let body = {};
-    await this.backend(body, re => this.expect(re['code'], ERROR.api_function_is_not_provided, "function not provided"));
-    body['function'] = '';
-    await this.backend(body, re => this.expect(re['code'], ERROR.api_function_name_is_empty, "empty uid"));
-    body['function'] = 'wrong_function_name is not allowed';
-    await this.backend(body, re => this.expect(this.base.getErrorCode(re), ERROR.uid_is_empty, "Empty uid: " + this.base.parseError(re['code']).message));
+    await this.backend(body, re => this.expect(re['code'], ERROR.api_route_is_not_provided, "route not provided"));
+    body['route'] = '';
+    await this.backend(body, re => this.expect(re['code'], ERROR.api_route_name_is_empty, "empty route"));
+    body['route'] = 'wrong_route_name is not allowed';
+    await this.backend(body, re => this.expect(this.base.getErrorCode(re), ERROR.uid_is_empty, "Empty uid: " + this.base.parseError(re['code']).extra));
 
 
-    body['function'] = 'createPost';
+    body['route'] = 'createPost';
     body['uid'] = this.userA.uid;
     await this.backend(body, re => this.expect(re['code'], ERROR.secret_is_empty, "empty secret"));
     body['secret'] = this.userA.secret;
@@ -722,7 +709,7 @@ class AppTest {
 
 
 
-    body['function'] = 'forum.createPost';
+    body['route'] = 'forum.createPost';
     await this.backend(body, re => {
       // console.log(re);
       this.expect(re['code'], ERROR.no_categories, "No category");
@@ -731,23 +718,38 @@ class AppTest {
     /// Break reference from 'body'
     let p2 = Object.assign({}, body);
     p2['categories'] = ['abc'];
+    p2['subject'] = "Create test with Backend.";
     console.log("Going to create");
-    let postKey = this.backend(p2, re => {
+
+    /// create
+    this.backend(p2, re => {
       if (this.isPushKey(re['data'])) {
         this.success("Post created with: " + re.data);
 
-        ///
-        console.log("Going to get post");
-        this.forum.getPostData(re.data).then(p => console.log(p))
+        /// get through front-end
+        this.forum.getPostData(re.data)
+          .then(p => {
+            
+            /// edit
+            let edit: POST = {
+              route: 'forum.editPost',
+              uid: this.userA.uid,
+              secret: this.userA.secret,
+              categories: ['abc']
+            };
+
+
+          })
           .catch(e => this.error('create failed: ' + e.message));
 
-        return re.data;
       }
       else {
         this.error("Post create failed:");
         return null;
       }
     });
+
+
 
 
 
@@ -908,7 +910,7 @@ class AppTest {
     //console.log(post);
 
 
-    let comment: COMMENT = { function: 'createComment', path: '', uid: this.userA.uid, secret: this.userA.secret, content: 'hi' };
+    let comment: COMMENT = { route: 'createComment', path: '', uid: this.userA.uid, secret: this.userA.secret, content: 'hi' };
     await this.forum.api(comment)
       .then(key => this.error('create comment with empty ancestors must be failed.'))
       .catch(e => this.expect(e.message, ERROR.path_is_empty_on_create_comment, "create comment with emtpy path properly failed."));
@@ -939,7 +941,7 @@ class AppTest {
 
 
     let edit: COMMENT = {
-      function: 'editComment',
+      route: 'editComment',
       path: createdPath,
       uid: this.userA.uid,
       secret: this.userA.secret,
@@ -965,7 +967,7 @@ class AppTest {
 
 
     let del: COMMENT = {
-      function: 'deleteComment',
+      route: 'deleteComment',
       path: editedPath,
       uid: this.userA.uid,
       secret: this.userA.secret
@@ -995,7 +997,7 @@ class AppTest {
 
     let fruit: POST = await this.testCreateAPost('abc', 'This is a fruit');
     let apple: COMMENT = {
-      function: 'createComment',
+      route: 'createComment',
       path: fruit.key,
       uid: this.userA.uid,
       content: "This is blue apple."
@@ -1008,7 +1010,7 @@ class AppTest {
 
 
     let smallBlueApple: COMMENT = {
-      function: 'createComment',
+      route: 'createComment',
       path: blueApplePath,
       uid: this.userA.uid,
       content: "This is small blue apple."
@@ -1137,7 +1139,7 @@ class AppTest {
 
   createAComment(path, content): firebase.Promise<any> {
     let BA1: COMMENT = {
-      function: 'createComment',
+      route: 'createComment',
       path: path,
       uid: this.userA.uid,
       content: content
@@ -1151,12 +1153,12 @@ class AppTest {
     console.log("\n ======================== testAvd() =============================");
 
     // this.backend({}, r => this.expect(r['code'], ERROR.requeset_is_empty, 'Calling with empty request must be failed'));
-    this.backend({}, r => this.expect(r['code'], ERROR.api_function_is_not_provided, 'function not provided'));
-    this.backend({ function: '' }, r => this.expect(r['code'], ERROR.api_function_name_is_empty, 'empty function'));
-    this.backend({ function: 'advertisement.create' }, r => this.expect(r['code'], ERROR.uid_is_empty, 'empty uid'));
+    this.backend({}, r => this.expect(r['code'], ERROR.api_route_is_not_provided, 'route not provided'));
+    this.backend({ route: '' }, r => this.expect(r['code'], ERROR.api_route_name_is_empty, 'empty route'));
+    this.backend({ route: 'advertisement.create' }, r => this.expect(r['code'], ERROR.uid_is_empty, 'empty uid'));
 
     let body = {
-      function: 'advertisement.create',     /// wrong route
+      route: 'advertisement.create',     /// wrong route
       uid: this.userA.uid
     }
     this.backend(body, r => this.expect(r['code'], ERROR.secret_is_empty, 'empty secret'));
@@ -1169,19 +1171,14 @@ class AppTest {
 
 
     /// right route
-    body.function = 'adv.create';
+    body.route = 'adv.create';
     this.backend(body, r => this.expect(this.base.errcode(r), ERROR.secret_does_not_match, "wrong secret: " + r['code']));
 
 
 
 
-
-
-    // body['function'] = 'advertiseemnt.arguments';
-    // this.backend(body, r => this.expect(r['code'], ERROR.api_function_exist_as_a_property_but_not_a_function, 'calling a property'));
-
     /// calling create of interface directly.
-    body['function'] = 'advertisement.create';
+    body['route'] = 'advertisement.create';
     body['subject'] = 'first adv!';
     let key = await this.adv.create(body)
       .then(key => { this.test(this.isPushKey(key), `Create success with Direct call of create advertisement interface: ${key}`); return key; })
@@ -1202,7 +1199,7 @@ class AppTest {
   // async testAdv_create() {
   //   let req = {
   //     body: {
-  //       function: 'advertisement.create'
+  //       route: 'advertisement.create'
   //     }
   //   };
   //   let res = {

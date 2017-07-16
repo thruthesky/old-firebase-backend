@@ -14,8 +14,9 @@ export class Base {
 
 
     /**
-     * @note error code now can contain extra information. To get error code and extra information, use errorInfo();
-     * @param code Error message
+     * 
+     * @see https://docs.google.com/document/d/1m3-wYZOaZQGbAzXeVlIpJNSdTIt3HCUiIt9UTmZUgXo/edit#heading=h.ogzu1hw0b96r
+     * @param code Error code/message
      * @param extra Extra data to deliver to users.
      */
     error(code, extra?) {
@@ -28,6 +29,7 @@ export class Base {
      *          - if extra is empty, then code will be returned
      *          - or, 'code: extra' will be returned.
      * @note this error can be parsed by parseError()
+     * @see https://docs.google.com/document/d/1m3-wYZOaZQGbAzXeVlIpJNSdTIt3HCUiIt9UTmZUgXo/edit#heading=h.ogzu1hw0b96r
      * @param code
      * @param extra 
      * @return string of error code.
@@ -40,10 +42,10 @@ export class Base {
         if (!str) return { code: 'error-str-is-empty-in-errorInfo' };
         if (typeof str !== 'string') return { code: 'error-str-is-not-string-in-errorInfo' };
         if (str.indexOf(": ") == -1) return { code: str };
-        let [code, ...message] = str.split(": ");
+        let [code, ...extra] = str.split(": ");
         return {
             code: code,
-            message: message.join(' ')
+            extra: extra.join(' ')
         };
     }
 
@@ -57,6 +59,9 @@ export class Base {
      * @note if the error object is Javascript Error Object, it has { message: error-string }
      * 
      * @return null if there is no error code on error object.
+     * 
+     * 
+     * @see https://docs.google.com/document/d/1m3-wYZOaZQGbAzXeVlIpJNSdTIt3HCUiIt9UTmZUgXo/edit#heading=h.ogzu1hw0b96r
      */
     getErrorCode(errorObject): string {
         if (!errorObject) return null;
@@ -66,31 +71,34 @@ export class Base {
     }
     /**
      * Alias of getErrorCode()
-     * @param e Alias of getErrorCode()
+     * 
+     * @see https://docs.google.com/document/d/1m3-wYZOaZQGbAzXeVlIpJNSdTIt3HCUiIt9UTmZUgXo/edit#heading=h.ogzu1hw0b96r
+     * @param errorObject Alias of getErrorCode()
      */
-    errcode(e): string {
-        return this.getErrorCode(e);
+    errcode(errorObject): string {
+        return this.getErrorCode(errorObject);
     }
     /**
      * Returns error message from error object.
+     * 
+     * @see https://docs.google.com/document/d/1m3-wYZOaZQGbAzXeVlIpJNSdTIt3HCUiIt9UTmZUgXo/edit#heading=h.ogzu1hw0b96r
      * @param errorObject Error object.
      * 
      * 
-     * @note if the error object is comming from Backend, it has { code: error-string }
-     * @note if the error object is Javascript Error Object, it has { message: error-string }
      * 
      * @return null if there is no error message.
      */
-    getErrorMessage(errorObject): string {
-        if (this.getErrorCode(errorObject)) return this.parseError(errorObject.code).message;
+    getErrorExtra(errorObject): string {
+        if (this.getErrorCode(errorObject)) return this.parseError(errorObject.code).extra;
         else return null;
     }
     /**
      * Alias of getErrorMessage()
-     * @param e See getErrorMessage
+     * @see https://docs.google.com/document/d/1m3-wYZOaZQGbAzXeVlIpJNSdTIt3HCUiIt9UTmZUgXo/edit#heading=h.ogzu1hw0b96r
+     * @param errorObject
      */
-    errmsg(e): string {
-        return this.getErrorMessage(e);
+    errextra(errorObject): string {
+        return this.getErrorExtra(errorObject);
     }
 
     throwError(e) {
@@ -116,7 +124,7 @@ export class Base {
         let re = {
             error: null,
             className: null,
-            functionName: null
+            methodName: null
         };
 
         if (req.body === void 0) {
@@ -125,14 +133,15 @@ export class Base {
         }
 
 
-        if (req.body.function === void 0) {
-            re.error = ERROR.api_function_is_not_provided;
+        if (req.body.route === void 0) {
+            console.log( req.body );
+            re.error = ERROR.api_route_is_not_provided;
             return re;
         }
 
-        let func: string = req.body.function;
-        if (!func) {
-            re.error = ERROR.api_function_name_is_empty;
+        let route: string = req.body.route;
+        if (!route) {
+            re.error = ERROR.api_route_name_is_empty;
             return re;
         }
 
@@ -156,26 +165,26 @@ export class Base {
         }
 
 
-        let cf = this.getClassFunction(func);
+        let cf = this.getClassMethod(route);
         re.className = cf.className;
-        re.functionName = cf.functionName;
+        re.methodName = cf.methodName;
         return re;
 
     }
 
-    getClassFunction(func) {
+    getClassMethod(route) {
         let re = {
             className: null,
-            functionName: null
+            methodName: null
         };
-        if (func.indexOf('.') > 0) {
-            let arr = func.split('.');
+        if (route.indexOf('.') > 0) {
+            let arr = route.split('.');
             re.className = arr[0];
-            re.functionName = arr[1];
+            re.methodName = arr[1];
         }
         else { /// for backward compatibility.
             re.className = 'forum';
-            re.functionName = func;
+            re.methodName = route;
         }
         return re;
     }

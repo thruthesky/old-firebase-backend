@@ -31,7 +31,7 @@ export class TestService {
 
 
         let data = {
-            function: 'create',
+            route: 'create',
             categories: ['abc'],
             uid: this.testUid,
             subject: this.testSubject,
@@ -131,7 +131,7 @@ export class TestService {
 
     testPostData(): POST {
         return {
-            function: 'create',
+            route: 'create',
             uid: this.testUid,
             subject: this.testSubject,
             content: this.testContent,

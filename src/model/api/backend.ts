@@ -40,12 +40,12 @@ export class BackendApi extends Base {
         let taxonomy = null;
         if (f.className == 'forum') taxonomy = new Forum();
         else if (f.className == 'adv') taxonomy = new AdvertisementToolInterface();
-        else return this.res.send({ code: base.makeErrorString(ERROR.wrong_route_class, params['function']) });
+        else return this.res.send({ code: base.makeErrorString(ERROR.wrong_route_class, params['route']) });
 
 
         // console.log("param: ", params, f);
-        if (taxonomy[f.functionName] === void 0) return this.res.send({ code: this.makeErrorString(ERROR.api_function_not_exsit, f.functionName) });
-        if (typeof taxonomy[f.functionName] !== 'function') return this.res.send({ code: ERROR.api_function_exist_as_a_property_but_not_a_function });
+        if (taxonomy[f.methodName] === void 0) return this.res.send({ code: this.makeErrorString(ERROR.api_route_not_exsit, f.methodName) });
+        if (typeof taxonomy[f.methodName] !== 'function') return this.res.send({ code: ERROR.api_route_exist_as_a_property_but_not_a_function });
 
 
 
@@ -63,8 +63,7 @@ export class BackendApi extends Base {
                 }
             })
             .then(key => {
-                // console.log("f:", taxonomy[f.functionName]);
-                return taxonomy[f.functionName](params);
+                return taxonomy[f.methodName](params);
             })
             .then(x => {
                 return this.res.send({ code: 0, data: x });
