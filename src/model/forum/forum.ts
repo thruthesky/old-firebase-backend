@@ -897,7 +897,7 @@ export class Forum extends Base {
 
         /// This tests must be here. It is being called from 'test.js' and 'index.js'
         if (route === void 0) return this.error(ERROR.api_route_is_not_provided);
-        if (!route) return this.error(ERROR.api_route_name_is_empty);
+        if (!route) return this.error(ERROR.api_route_is_empty);
 
 
         let f = this.getClassMethod(route);

@@ -26,6 +26,9 @@ import * as chalk from 'chalk';
 const cheerio = require('cheerio');
 const argv = require('yargs').argv;
 
+const request = require('request');
+
+
 
 const datetime = () => {
   let d = new Date();
@@ -71,16 +74,22 @@ class AppTest {
     // console.log(argv._);
 
 
+
     await this.prepareTest();
+
     if (argv._.length == 2 && argv._[0]) {
+      let method: string = argv._[0];
+      // if (method.toLowerCase().indexOf('cloud') == -1) await this.prepareTest();
       await this[argv._[0]]();
     }
     else {
+      // await this.prepareTest();
       await this.testIDFormat();
       await this.testCategory();
       await this.testCreateAPost();
       await this.testPost();
       await this.testApi();
+      await this.testBackendApi();
       await this.testBackendPost();
       await this.testPostApi();
       await this.testCommentSimple();
@@ -89,6 +98,7 @@ class AppTest {
       await this.testFriendlyUrl();
       await this.testSeo();
       await this.testAdv();
+      this.testCloudFunctions(); /// it is not promise
     }
 
     setTimeout(() => {
@@ -150,7 +160,7 @@ class AppTest {
   async prepareTest() {
     console.log("\n =========================== prepareTest() =========================== ")
 
-    
+
 
 
 
@@ -529,10 +539,10 @@ class AppTest {
 
     await this.forum.api({})
       .catch(e => {
-        this.expect(e.message, ERROR.api_route_is_not_provided, "api call without route properly failed.");
+        this.expect(this.base.errcode(e), ERROR.api_route_is_not_provided, "api call without route properly failed.");
       });
     await this.forum.api({ route: '' })
-      .catch(e => this.expect(e.message, ERROR.api_route_name_is_empty, "api call with empty route name properly faield"));
+      .catch(e => this.expect(e.message, ERROR.api_route_is_empty, "api call with empty route name properly faield"));
 
     await this.forum.api({ route: 'wrong' })
       .catch(e => {
@@ -541,11 +551,18 @@ class AppTest {
 
   }
 
+  async testBackendApi() {
+    this.backend( { route: 'forum.version', uid: '-wrong-uid', secret: 'secret' }, res => {
+      this.expect( this.base.errcode(res), ERROR.secret_does_not_match, "wrong uid & secret");
+    });
+  }
+
+
   async testPostApi() {
 
     console.log("\n =========================== testPostApi() =========================== ");
 
-    
+
     this.userA.secret = await this.forum.getSecretKey(this.userA.uid)
       .then(key => {
         this.success(`Got key: ${key}`);
@@ -694,9 +711,9 @@ class AppTest {
 
     console.log("\n ====================== testBackendPost() =========================");
     let body = {};
-    await this.backend(body, re => this.expect(re['code'], ERROR.api_route_is_not_provided, "route not provided"));
+    await this.backend(body, re => this.expect(this.base.errcode(re), ERROR.api_route_is_not_provided, "route not provided"));
     body['route'] = '';
-    await this.backend(body, re => this.expect(re['code'], ERROR.api_route_name_is_empty, "empty route"));
+    await this.backend(body, re => this.expect(re['code'], ERROR.api_route_is_empty, "empty route"));
     body['route'] = 'wrong_route_name is not allowed';
     await this.backend(body, re => this.expect(this.base.getErrorCode(re), ERROR.uid_is_empty, "Empty uid: " + this.base.parseError(re['code']).extra));
 
@@ -729,7 +746,7 @@ class AppTest {
         /// get through front-end
         this.forum.getPostData(re.data)
           .then(p => {
-            
+
             /// edit
             let edit: POST = {
               route: 'forum.editPost',
@@ -1153,8 +1170,8 @@ class AppTest {
     console.log("\n ======================== testAvd() =============================");
 
     // this.backend({}, r => this.expect(r['code'], ERROR.requeset_is_empty, 'Calling with empty request must be failed'));
-    this.backend({}, r => this.expect(r['code'], ERROR.api_route_is_not_provided, 'route not provided'));
-    this.backend({ route: '' }, r => this.expect(r['code'], ERROR.api_route_name_is_empty, 'empty route'));
+    this.backend({}, r => this.expect(this.base.errcode(r), ERROR.api_route_is_not_provided, 'route not provided'));
+    this.backend({ route: '' }, r => this.expect(r['code'], ERROR.api_route_is_empty, 'empty route'));
     this.backend({ route: 'advertisement.create' }, r => this.expect(r['code'], ERROR.uid_is_empty, 'empty uid'));
 
     let body = {
@@ -1210,6 +1227,76 @@ class AppTest {
   //   new BackendApi(db, req, res);
   // }
 
+
+
+  /**
+   * This method is going to test the real cloud functions with http.
+   */
+  testCloudFunctions() {
+
+    let url = 'https://us-central1-sonub-e2b13.cloudfunctions.net/api';
+    let form = {
+    };
+    request.post({ url: url, form: form }, ( error, response, body ) => {
+      let res = JSON.parse( body );
+      this.expect( this.base.errcode( res ), ERROR.api_route_is_not_provided, "No route" );
+    });
+    form['route'] = '';
+    request.post({ url: url, form: form }, ( error, response, body ) => {
+      let res = JSON.parse( body );
+      this.expect( this.base.errcode( res ), ERROR.api_route_is_empty, "Empty route" );
+    });
+    form['route'] = 'forum.version';
+    form['uid'] = '-wrong-uid';
+    request.post({ url: url, form: form }, (error, response, body) => {
+      let res = JSON.parse( body );
+      this.expect( this.base.errcode( res ), ERROR.secret_is_empty, "Empty secret" );
+    });
+
+    form['secret'] = '-wrong-secret';
+    request.post({ url: url, form: form }, (error, response, body) => {
+      let res = JSON.parse( body );
+      this.expect( this.base.errcode( res ), ERROR.secret_does_not_match, "Empty route" );
+    });
+
+
+
+
+    /// success. get version
+    form['uid'] = this.userA.uid;
+    form['secret'] = this.userA.secret;
+    request.post({ url: url, form: form }, (error, response, body) => {
+      let res = JSON.parse( body );
+      this.expect( res.data, this.base.version(), "Version" );
+    });
+
+
+    ///  error. no categories.
+    form['route'] = 'forum.createPost';
+    form['subject'] = 'A subject';
+    form['content'] = 'A content';
+    request.post({ url: url, form: form }, (error, response, body) => {
+      console.log( body );
+      let res = JSON.parse( body );
+      this.expect( this.base.errcode(res), ERROR.no_categories, "cloud functions: nocategories" );
+    });
+
+
+    ///  success
+    form['categories'] = ['abc'];
+    request.post({ url: url, form: form }, (error, response, body) => {
+      // console.log( body );
+      let res = JSON.parse( body );
+      this.test( this.isPushKey(res.data), "cloud functions: forum.createPost: " + res.data );
+    });
+
+
+
+    
+
+
+
+  }
 }
 
 

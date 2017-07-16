@@ -23,15 +23,15 @@ const app = admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://" + serviceAccount.project_id + ".firebaseio.com"
 });
-const db = app.database();
+const root = app.database().ref();
 
 exports.api = functions.https.onRequest((req, res) => {
-  cors(req, res, () => new BackendApi(db, req, res) );
+  cors(req, res, () => (new BackendApi(root, req, res)).run() );
 });
 
 
 exports.postSeo = functions.https.onRequest((req, res) => {
-  let forum = (new Forum()).setRoot(db.ref('/'));
+  let forum = (new Forum()).setRoot(root);
   forum.seo( req.path )
     .then( html => res.status(200).send( html ) )
     .catch( e => {

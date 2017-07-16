@@ -12,6 +12,9 @@ export class Base {
     constructor() {
     }
 
+    version() {
+        return 'alpha-0';
+    }
 
     /**
      * 
@@ -135,13 +138,14 @@ export class Base {
 
         if (req.body.route === void 0) {
             console.log( req.body );
-            re.error = ERROR.api_route_is_not_provided;
+            let paramString = 'REQUEST-BODY=' + JSON.stringify(req.body);
+            re.error = this.makeErrorString( ERROR.api_route_is_not_provided, paramString );
             return re;
         }
 
         let route: string = req.body.route;
         if (!route) {
-            re.error = ERROR.api_route_name_is_empty;
+            re.error = ERROR.api_route_is_empty;
             return re;
         }
 
