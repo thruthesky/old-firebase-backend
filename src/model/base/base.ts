@@ -1,6 +1,6 @@
 import * as firebase from 'firebase';
 
-import { SECRET_KEY_PATH } from './../../define';
+import { SECRET_KEY_PATH } from './../../interface';
 import { ERROR } from './../error/error';
 
 
