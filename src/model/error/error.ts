@@ -32,9 +32,12 @@ export function isError(code: string, compare_code?: string): boolean {
 
 
 export const ERROR = {
-    api_that_function_is_not_allowed: 'api_that_function_is_not_allowed',
-    api_function_name_is_empty: 'api_function_name_is_empty',
-    api_function_is_not_provided: 'function_is_not_provided',
+    api_that_route_is_not_allowed: 'api_that_route_is_not_allowed',
+    api_route_name_is_empty: 'api_route_name_is_empty',
+    api_route_is_not_provided: 'api_route_is_not_provided',
+    api_route_not_exsit: 'api_route_not_exsit',
+    api_route_exist_as_a_property_but_not_a_function: 'api_route_exist_as_a_property_but_not_a_function',
+    wrong_route_class: 'wrong_route_class',
     // api_unknown_function: 'unknwon_function',
     unknown: 'unknown',
     category_id_empty: 'category_id_empty',
@@ -86,7 +89,8 @@ export const ERROR = {
     permission_denied_not_your_comment_on_delete_comment: 'permission_denied_not_your_comment_on_delete_comment',
 
 
-    push_token_is_empty: 'push_token_is_empty'
+    push_token_is_empty: 'push_token_is_empty',
+    api_wrong_class_name: 'api_wrong_class_name'
 };
 
 

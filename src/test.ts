@@ -1,27 +1,33 @@
 import * as admin from "firebase-admin";
 import serviceAccount from "./etc/service-key";
+
 // Admin Key initialization. needs to be done only once. (초기화. 중요. 앱에서 한번만 초기화 해야 한다.)
 const app = admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://sonub-e2b13.firebaseio.com"
 });
+
 const db = app.database();
 
 
 //import { Post, POST } from './model/post';
 
+import { Base } from './model/base/base';
 import { Forum } from './model/forum/forum';
-import { POST, CATEGORY, ALL_CATEGORIES, COMMENT } from './model/forum/forum.interface';
+
+import { BackendApi } from './model/api/backend';
+
+import { POST, CATEGORY, ALL_CATEGORIES, COMMENT } from './interface';
 import { ERROR, isError } from './model/error/error';
+
+import { AdvertisementToolInterface } from './model/advertisement-tool/advertisement-tool-interface';
+
 import * as chalk from 'chalk';
 const cheerio = require('cheerio');
 const argv = require('yargs').argv;
 
-interface POST_REQUEST { function: string, data: POST };
 
-
-
-function datetime() {
+const datetime = () => {
   let d = new Date();
   return d.getMonth() + '-' + d.getDate() + ':' + d.getHours() + ':' + d.getMinutes() + ':' + d.getSeconds();
 }
@@ -32,7 +38,9 @@ function datetime() {
  */
 class AppTest {
   root;
+  base: Base;
   forum: Forum;
+  adv: AdvertisementToolInterface;
   errorCount: number = 0;
   unexpectedCount: number = 0;
   successCount: number = 0;
@@ -45,9 +53,10 @@ class AppTest {
   };
 
   constructor() {
-    this.root = db.ref('/');
-    this.forum = new Forum();
-    this.forum.setRoot(this.root);
+    this.root = db.ref();
+    this.base = new Base();
+    this.forum = (new Forum()).setRoot(this.root);
+    this.adv = (new AdvertisementToolInterface()).setRoot(this.root);
     this.run();
   }
 
@@ -72,21 +81,42 @@ class AppTest {
       await this.testCreateAPost();
       await this.testPost();
       await this.testApi();
+      await this.testBackendPost();
       await this.testPostApi();
       await this.testCommentSimple();
       await this.testComment();
       await this.testCommentsTreeToArray();
       await this.testFriendlyUrl();
       await this.testSeo();
+      await this.testAdv();
     }
-
-
 
     setTimeout(() => {
       console.log(`Tests: ${this.successCount + this.errorCount}, successes: ${this.successCount}, errors: ${this.errorCount}`);
     }, 1000);
 
   }
+
+
+  /**
+   * 
+   * Use this to test the real backend environemnt.
+   * @note You must also do 'unit-test' on indivisual mehtods.
+   * 
+   * @param body User input to call backend.
+   * @param send Callback with return data from backend.
+   * 
+   * @warning @attention When you are going to call BackendApi::run(), you cannot use 'async' or 'Promise' since it uses callback.
+   * @warning @attention BackendApi::run() will be triggered by web browser and the result will be sent back to browser using 'Express::resopnse'
+   * 
+   */
+  backend(body, send) {
+    let req = { body: body };
+    let res = { send: send };
+    (new BackendApi(db.ref(), req, res)).run();
+  }
+
+
 
   async testIDFormat() {
 
@@ -118,24 +148,13 @@ class AppTest {
    * 
    */
   async prepareTest() {
-    console.log("\n =========================== testMethods() =========================== ")
+    console.log("\n =========================== prepareTest() =========================== ")
 
-    // let re = this.forum.functionName({ function: '' });
-    // this.expect(re, 'create', `functions name is empty`);
-
-    // re = this.forum.functionName({ function: 'edit' });
-    // this.expect(re, 'edit', `functions name is empty`);
-
-    // re = this.forum.functionName({ function: 'delete' });
-    // this.expect(re, 'delete', `functions name is empty`);
-
-
-    // re = this.forum.functionName({ function: 'wrong' });
-    // this.expect(re, 'wrong', `functions name is empty`);
+    
 
 
 
-
+    console.log(`prepareTest() ==> generateSecretKey of ${this.userA.uid}`);
     await this.forum.generateSecretKey(this.userA.uid)
       .then(secret => {
         this.userA.secret = secret;
@@ -506,13 +525,19 @@ class AppTest {
 
 
   async testApi() {
-    await this.forum.api([])
-      .catch(e => this.expect(e.message, ERROR.api_function_is_not_provided, "api call without function properly failed."));
-    await this.forum.api({ function: '' })
-      .catch(e => this.expect(e.message, ERROR.api_function_name_is_empty, "api call with empty function anme properly faield"));
+    console.log("\n =========================== testApi() =================================");
 
-    await this.forum.api({ function: 'wrong' })
-      .catch(e => this.expect(e.message, ERROR.api_that_function_is_not_allowed, "api call with wrong function name properly failed"));
+    await this.forum.api({})
+      .catch(e => {
+        this.expect(e.message, ERROR.api_route_is_not_provided, "api call without route properly failed.");
+      });
+    await this.forum.api({ route: '' })
+      .catch(e => this.expect(e.message, ERROR.api_route_name_is_empty, "api call with empty route name properly faield"));
+
+    await this.forum.api({ route: 'wrong' })
+      .catch(e => {
+        this.expect(this.base.getErrorCode(e), ERROR.api_that_route_is_not_allowed, "api call with wrong route name properly failed");
+      });
 
   }
 
@@ -520,12 +545,10 @@ class AppTest {
 
     console.log("\n =========================== testPostApi() =========================== ");
 
-    // await this.forum.postApi({}).catch(e => this.expect(e.message, ERROR.function_is_not_provided, 'function not providing test.'));
-    //    await this.forum.postApi({ function: 'no-function-name' }).catch(e => this.expect(e.message, ERROR.requeset_data_is_empty, 'function is give but data is not given.'));
-
+    
     this.userA.secret = await this.forum.getSecretKey(this.userA.uid)
       .then(key => {
-        this.success(`Got key: `);
+        this.success(`Got key: ${key}`);
         return key;
       })
       .catch(e => {
@@ -535,18 +558,18 @@ class AppTest {
 
 
     await this.forum.api({
-      function: "wrong-function-name",
+      route: "wrong-route-name",
       uid: this.userA.uid,
       secret: this.userA.secret
     })
-      .then(() => { this.error("wrong function name must fail.") })
-      .catch(e => this.expect(e.message, ERROR.api_that_function_is_not_allowed, 'Wrong function name test'));
+      .then(() => { this.error("wrong route name must fail.") })
+      .catch(e => this.expect(this.base.errcode(e), ERROR.api_that_route_is_not_allowed, 'Wrong route name test:' + this.base.errextra(e)));
 
 
 
     // create edit. expect error. 'cause no category.
     let post: POST = {
-      function: 'createPost',
+      route: 'createPost',
       subject: 'post create test by api',
       content: 'This is content',
       categories: [],
@@ -578,14 +601,14 @@ class AppTest {
     // expect success.
     post['categories'] = ['abc', 'flower'];
     let key = await this.forum.api(post)
-      .then(key => { this.success("Post create with postApi(function:create) success . key: " + key); return key; })
+      .then(key => { this.success("Post create with postApi(route:create) success . key: " + key); return key; })
       .catch(e => this.error("A post should be created."));
 
 
     // console.log("KEY ===> ", key);
 
     /// edit with no category
-    post.function = 'editPost';
+    post.route = 'editPost';
     post.key = key;
     post.categories = [];
     post.subject = "Subject updated...!";
@@ -609,9 +632,9 @@ class AppTest {
         this.success("Post edit success with: " + key);
         this.forum.getPostData(key).then((p: POST) => {
 
-          this.expect(p.key, post.key, "postApi(function:edit) key match");
-          this.expect(p.subject, post.subject, "Subject edit with postApi(function:eidt) success.");
-          this.expect(p.content, post.content, "Content edit with postApi(function:eidt) success.");
+          this.expect(p.key, post.key, "postApi(route:edit) key match");
+          this.expect(p.subject, post.subject, "Subject edit with postApi(route:eidt) success.");
+          this.expect(p.content, post.content, "Content edit with postApi(route:eidt) success.");
 
 
           this.forum.categoryPostRelation().child('flower').child(p.key).once('value')
@@ -634,7 +657,7 @@ class AppTest {
 
 
     /// delete post
-    newData.function = 'deletePost';
+    newData.route = 'deletePost';
     newData.key = '-wrong-post-key';
     await this.forum.api(newData)
       .then(() => this.error("Calling postApi for delete with wrong post key must be failed."))
@@ -665,6 +688,74 @@ class AppTest {
 
     // post CRUD by admin.
 
+  }
+
+  async testBackendPost() {
+
+    console.log("\n ====================== testBackendPost() =========================");
+    let body = {};
+    await this.backend(body, re => this.expect(re['code'], ERROR.api_route_is_not_provided, "route not provided"));
+    body['route'] = '';
+    await this.backend(body, re => this.expect(re['code'], ERROR.api_route_name_is_empty, "empty route"));
+    body['route'] = 'wrong_route_name is not allowed';
+    await this.backend(body, re => this.expect(this.base.getErrorCode(re), ERROR.uid_is_empty, "Empty uid: " + this.base.parseError(re['code']).extra));
+
+
+    body['route'] = 'createPost';
+    body['uid'] = this.userA.uid;
+    await this.backend(body, re => this.expect(re['code'], ERROR.secret_is_empty, "empty secret"));
+    body['secret'] = this.userA.secret;
+
+
+
+
+    body['route'] = 'forum.createPost';
+    await this.backend(body, re => {
+      // console.log(re);
+      this.expect(re['code'], ERROR.no_categories, "No category");
+    });
+
+    /// Break reference from 'body'
+    let p2 = Object.assign({}, body);
+    p2['categories'] = ['abc'];
+    p2['subject'] = "Create test with Backend.";
+    console.log("Going to create");
+
+    /// create
+    this.backend(p2, re => {
+      if (this.isPushKey(re['data'])) {
+        this.success("Post created with: " + re.data);
+
+        /// get through front-end
+        this.forum.getPostData(re.data)
+          .then(p => {
+            
+            /// edit
+            let edit: POST = {
+              route: 'forum.editPost',
+              uid: this.userA.uid,
+              secret: this.userA.secret,
+              categories: ['abc']
+            };
+
+
+          })
+          .catch(e => this.error('create failed: ' + e.message));
+
+      }
+      else {
+        this.error("Post create failed:");
+        return null;
+      }
+    });
+
+
+
+
+
+    console.log("finish testBackendPost() before callback?");
+
+    return;
   }
 
 
@@ -819,7 +910,7 @@ class AppTest {
     //console.log(post);
 
 
-    let comment: COMMENT = { function: 'createComment', path: '', uid: this.userA.uid, secret: this.userA.secret, content: 'hi' };
+    let comment: COMMENT = { route: 'createComment', path: '', uid: this.userA.uid, secret: this.userA.secret, content: 'hi' };
     await this.forum.api(comment)
       .then(key => this.error('create comment with empty ancestors must be failed.'))
       .catch(e => this.expect(e.message, ERROR.path_is_empty_on_create_comment, "create comment with emtpy path properly failed."));
@@ -850,7 +941,7 @@ class AppTest {
 
 
     let edit: COMMENT = {
-      function: 'editComment',
+      route: 'editComment',
       path: createdPath,
       uid: this.userA.uid,
       secret: this.userA.secret,
@@ -876,7 +967,7 @@ class AppTest {
 
 
     let del: COMMENT = {
-      function: 'deleteComment',
+      route: 'deleteComment',
       path: editedPath,
       uid: this.userA.uid,
       secret: this.userA.secret
@@ -906,7 +997,7 @@ class AppTest {
 
     let fruit: POST = await this.testCreateAPost('abc', 'This is a fruit');
     let apple: COMMENT = {
-      function: 'createComment',
+      route: 'createComment',
       path: fruit.key,
       uid: this.userA.uid,
       content: "This is blue apple."
@@ -919,7 +1010,7 @@ class AppTest {
 
 
     let smallBlueApple: COMMENT = {
-      function: 'createComment',
+      route: 'createComment',
       path: blueApplePath,
       uid: this.userA.uid,
       content: "This is small blue apple."
@@ -965,90 +1056,90 @@ class AppTest {
     let p = begin.key;
 
     console.log("Going to create comments for order test. it will take some time....");
-    let pathA = await this.createAComment( p, 'A' );
-    let pathB = await this.createAComment( p, 'B' );
-    let pathC = await this.createAComment( p, 'C' );
+    let pathA = await this.createAComment(p, 'A');
+    let pathB = await this.createAComment(p, 'B');
+    let pathC = await this.createAComment(p, 'C');
 
-    let pathBA = await this.createAComment( pathB, 'BA');
-    let pathBA1 = await this.createAComment( pathBA, 'BA1');
-    let pathBA2 = await this.createAComment( pathBA, 'BA2');
-    
-    let pathBA1A = await this.createAComment( pathBA1, "BA1A" );
+    let pathBA = await this.createAComment(pathB, 'BA');
+    let pathBA1 = await this.createAComment(pathBA, 'BA1');
+    let pathBA2 = await this.createAComment(pathBA, 'BA2');
+
+    let pathBA1A = await this.createAComment(pathBA1, "BA1A");
 
 
-    let pathD = await this.createAComment( p, 'D' );
-    let pathD1 = await this.createAComment( pathD, 'D1' );
-    let pathD2 = await this.createAComment( pathD, 'D2' );
-    let pathD2A = await this.createAComment( pathD2, 'D2A' );
-    let pathD2A1 = await this.createAComment( pathD2A, 'D2A1' );
-    let pathD2A1A = await this.createAComment( pathD2A1, 'D2A1A' );
-    let pathD2A2 = await this.createAComment( pathD2A, 'D2A2' );
-    let pathD2B = await this.createAComment( pathD, 'D2B' );
-    let pathD3 = await this.createAComment( pathD, 'D3' );
-    let pathD4 = await this.createAComment( pathD, 'D4' );
-    
-
+    let pathD = await this.createAComment(p, 'D');
+    let pathD1 = await this.createAComment(pathD, 'D1');
+    let pathD2 = await this.createAComment(pathD, 'D2');
+    let pathD2A = await this.createAComment(pathD2, 'D2A');
+    let pathD2A1 = await this.createAComment(pathD2A, 'D2A1');
+    let pathD2A1A = await this.createAComment(pathD2A1, 'D2A1A');
+    let pathD2A2 = await this.createAComment(pathD2A, 'D2A2');
+    let pathD2B = await this.createAComment(pathD, 'D2B');
+    let pathD3 = await this.createAComment(pathD, 'D3');
+    let pathD4 = await this.createAComment(pathD, 'D4');
 
 
 
-    let pathE = await this.createAComment( p, 'E' );
-    let pathF = await this.createAComment( p, 'F' );
-    let pathG = await this.createAComment( p, 'G' );
-    let pathH = await this.createAComment( p, 'H' );
-    let pathI = await this.createAComment( p, 'I' );
-    let pathJ = await this.createAComment( p, 'J' );
 
 
-    let pathBA1B = await this.createAComment( pathBA1, "BA1B" );
+    let pathE = await this.createAComment(p, 'E');
+    let pathF = await this.createAComment(p, 'F');
+    let pathG = await this.createAComment(p, 'G');
+    let pathH = await this.createAComment(p, 'H');
+    let pathI = await this.createAComment(p, 'I');
+    let pathJ = await this.createAComment(p, 'J');
 
 
-    let pathD2A1A1 = await this.createAComment( pathD2A1, 'D2A1A1' );
-    let pathD2A1A1a = await this.createAComment( pathD2A1A1, 'D2A1A1-a' );
-    let pathD2A1A1b = await this.createAComment( pathD2A1A1, 'D2A1A1-b' );
-    let pathD2A1A1c = await this.createAComment( pathD2A1A1, 'D2A1A1-c' );
-    let pathD2A1A1d = await this.createAComment( pathD2A1A1, 'D2A1A1-d' );
+    let pathBA1B = await this.createAComment(pathBA1, "BA1B");
 
-    
+
+    let pathD2A1A1 = await this.createAComment(pathD2A1, 'D2A1A1');
+    let pathD2A1A1a = await this.createAComment(pathD2A1A1, 'D2A1A1-a');
+    let pathD2A1A1b = await this.createAComment(pathD2A1A1, 'D2A1A1-b');
+    let pathD2A1A1c = await this.createAComment(pathD2A1A1, 'D2A1A1-c');
+    let pathD2A1A1d = await this.createAComment(pathD2A1A1, 'D2A1A1-d');
+
+
 
     let comments = await this.forum.getComments(begin.key).catch(e => this.error(e.message));
-    
-    this.expect( Object.keys(comments).length, 10, "root comments are created properly.");
 
-    let res = this.forum.commentsTreeToArray( comments );
+    this.expect(Object.keys(comments).length, 10, "root comments are created properly.");
+
+    let res = this.forum.commentsTreeToArray(comments);
 
 
     // console.log(res);
     let contents = [];
 
-    for ( let p of res ) {
-      contents.push( p.content );
+    for (let p of res) {
+      contents.push(p.content);
     }
 
 
     contents.sort();
     let match = true;
-    for ( let i = 0 ; i < contents.length; i ++ ) {
-      if ( contents[ i ] != res[i]['content'] ) {
-        console.log( `${contents[i]} != ${res[i]['content']}` );
+    for (let i = 0; i < contents.length; i++) {
+      if (contents[i] != res[i]['content']) {
+        console.log(`${contents[i]} != ${res[i]['content']}`);
         match = false;
       }
     }
 
-    this.test( match, "All replies are in order.");
-    
+    this.test(match, "All replies are in order.");
+
   }
 
 
   async testCommentSimple() {
-    let p = await this.createAComment('-KohAgezTF-yX6skgQVM', 'Simple 1' ).catch( e => this.error( e.message ) );
-    this.test( p, "Comment created with: " + p);
+    let p = await this.createAComment('-KohAgezTF-yX6skgQVM', 'Simple 1').catch(e => this.error(e.message));
+    this.test(p, "Comment created with: " + p);
 
   }
 
 
   createAComment(path, content): firebase.Promise<any> {
     let BA1: COMMENT = {
-      function: 'createComment',
+      route: 'createComment',
       path: path,
       uid: this.userA.uid,
       content: content
@@ -1057,6 +1148,68 @@ class AppTest {
       .catch(e => this.error(e.message));
 
   }
+
+  async testAdv() {
+    console.log("\n ======================== testAvd() =============================");
+
+    // this.backend({}, r => this.expect(r['code'], ERROR.requeset_is_empty, 'Calling with empty request must be failed'));
+    this.backend({}, r => this.expect(r['code'], ERROR.api_route_is_not_provided, 'route not provided'));
+    this.backend({ route: '' }, r => this.expect(r['code'], ERROR.api_route_name_is_empty, 'empty route'));
+    this.backend({ route: 'advertisement.create' }, r => this.expect(r['code'], ERROR.uid_is_empty, 'empty uid'));
+
+    let body = {
+      route: 'advertisement.create',     /// wrong route
+      uid: this.userA.uid
+    }
+    this.backend(body, r => this.expect(r['code'], ERROR.secret_is_empty, 'empty secret'));
+
+
+    body['secret'] = 'wrong-secret';        /// wrong secret
+
+    /// Wrong route: calling create with backend environment.
+    this.backend(body, r => this.expect(this.base.errcode(r), ERROR.wrong_route_class, "wrong route: " + r['code']));
+
+
+    /// right route
+    body.route = 'adv.create';
+    this.backend(body, r => this.expect(this.base.errcode(r), ERROR.secret_does_not_match, "wrong secret: " + r['code']));
+
+
+
+
+    /// calling create of interface directly.
+    body['route'] = 'advertisement.create';
+    body['subject'] = 'first adv!';
+    let key = await this.adv.create(body)
+      .then(key => { this.test(this.isPushKey(key), `Create success with Direct call of create advertisement interface: ${key}`); return key; })
+      .catch(e => this.error("create failed with: " + e.message));
+
+  }
+
+
+  isPushKey(k) {
+    if (!k) return false;
+    if (typeof k !== 'string') return false;
+    if (k.length > 21 || k.length < 19) return false;
+    if (k.charAt(0) != '-') return false;
+    return true;
+  }
+
+
+  // async testAdv_create() {
+  //   let req = {
+  //     body: {
+  //       route: 'advertisement.create'
+  //     }
+  //   };
+  //   let res = {
+  //     send: (r) => {
+  //       this.expect(r['code'], ERROR.uid_is_empty, 'Calling with empty uid must be failed');
+  //     }
+  //   }
+  //   new BackendApi(db, req, res);
+  // }
+
 }
 
 

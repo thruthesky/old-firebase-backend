@@ -24,6 +24,15 @@ export const SECRET_KEY_PATH = 'user/secret';
 export const PROFILE_PATH = 'user/profile';
 
 
+export const ADVERTISEMENT_PATH = 'advertisement';
+
+
+
+export interface ERROR_INFO {
+    code: string;
+    extra?: string;
+}
+
 
 
 
@@ -81,7 +90,7 @@ export type CATEGORIES = Array<CATEGORY>;
 
 
 interface REQUEST {
-    function?: string;
+    route?: string;
     secret: string;
 }
 
@@ -122,7 +131,7 @@ export type POSTS = Array<POST>;
 
 
 export interface COMMENT {
-    function?: string;
+    route?: string;
     // ancestors: Array<string>;
     path: string;
     uid: string;

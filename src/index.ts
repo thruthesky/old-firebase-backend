@@ -9,8 +9,13 @@ import * as admin from 'firebase-admin';
 
 import * as corsOptions from 'cors';
 
+
 import serviceAccount from "./etc/service-key";
+import { BackendApi } from './model/api/backend';
+
 import { Forum } from './model/forum/forum';
+
+
 
 const cors = corsOptions({ origin: true });
 
@@ -21,15 +26,7 @@ const app = admin.initializeApp({
 const db = app.database();
 
 exports.api = functions.https.onRequest((req, res) => {
-
-  cors(req, res, () => {
-    //console.log("postApi() begins!");
-    let forum = (new Forum()).setRoot(db.ref('/'));
-    forum.api(req.body)
-      .then(x => res.send({ code: 0, data: x }))
-      .catch(e => res.send({ code: e.message, message: forum.getLastErrorMessage }));
-    //console.log("postApi() end!");
-  });
+  cors(req, res, () => new BackendApi(db, req, res) );
 });
 
 

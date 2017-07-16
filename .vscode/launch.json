@@ -8,9 +8,9 @@
             "type": "node",
             "request": "launch",
             "name": "Launch Program",
-            "program": "${workspaceRoot}/functions/test.ts",
+            "program": "${workspaceRoot}/src/test.ts",
             "outFiles": [
-                "${workspaceRoot}/functions/dist/test.js"
+                "${workspaceRoot}/src/dist/test.js"
             ]
         },
         {
