@@ -9,9 +9,12 @@ import * as admin from 'firebase-admin';
 
 import * as corsOptions from 'cors';
 
+
 import serviceAccount from "./etc/service-key";
+import { BackendApi } from './model/api/backend';
+
 import { Forum } from './model/forum/forum';
-import { ERROR } from './model/error/error';
+
 
 
 const cors = corsOptions({ origin: true });
@@ -23,32 +26,7 @@ const app = admin.initializeApp({
 const db = app.database();
 
 exports.api = functions.https.onRequest((req, res) => {
-
-  cors(req, res, () => {
-    //console.log("postApi() begins!");
-
-    /// check function.
-    /// @todo move it to base::checkRequestFunction();
-    if ( req.body === void 0 || req.body.function === void 0 ) return this.error(ERROR.api_function_is_not_provided);
-    let func: string = req.body.function;
-    if (!func) return this.error(ERROR.api_function_name_is_empty);
-
-    let taxonomy = null;
-    if ( func.indexOf('.') > 0 ) {
-      let arr = func.split('.');
-      if ( arr[0] == 'forum' ) taxonomy =  new Forum();
-      // else if ( arr[0] == 'advertisement' ) taxonomy = new Advertisement();
-      else return ERROR.api_wrong_class_name;
-    }
-    else taxonomy = new Forum();
-
-    taxonomy.setRoot(db.ref('/'));
-
-    taxonomy.api(req.body)
-      .then(x => res.send({ code: 0, data: x }))
-      .catch(e => res.send({ code: e.message }));
-    //console.log("postApi() end!");
-  });
+  cors(req, res, () => new BackendApi(db, req, res) );
 });
 
 

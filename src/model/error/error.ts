@@ -33,8 +33,12 @@ export function isError(code: string, compare_code?: string): boolean {
 
 export const ERROR = {
     api_that_function_is_not_allowed: 'api_that_function_is_not_allowed',
+    api_that_function_is_not_allowed_in_forum: 'api_that_function_is_not_allowed_in_forum',
     api_function_name_is_empty: 'api_function_name_is_empty',
-    api_function_is_not_provided: 'function_is_not_provided',
+    api_function_is_not_provided: 'api_function_is_not_provided',
+    api_function_not_exsit: 'api_function_not_exsit',
+    api_function_exist_as_a_property_but_not_a_function: 'api_function_exist_as_a_property_but_not_a_function',
+    wrong_route_class: 'wrong_route_class',
     // api_unknown_function: 'unknwon_function',
     unknown: 'unknown',
     category_id_empty: 'category_id_empty',

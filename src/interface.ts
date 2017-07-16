@@ -24,6 +24,15 @@ export const SECRET_KEY_PATH = 'user/secret';
 export const PROFILE_PATH = 'user/profile';
 
 
+export const ADVERTISEMENT_PATH = 'advertisement';
+
+
+
+export interface ERROR_INFO {
+    code: string;
+    message?: string;
+}
+
 
 
 

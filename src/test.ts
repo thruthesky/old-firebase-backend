@@ -6,14 +6,22 @@ const app = admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://sonub-e2b13.firebaseio.com"
 });
+
 const db = app.database();
 
 
 //import { Post, POST } from './model/post';
 
+import { Base } from './model/base/base';
 import { Forum } from './model/forum/forum';
+
+import { BackendApi } from './model/api/backend';
+
 import { POST, CATEGORY, ALL_CATEGORIES, COMMENT } from './interface';
 import { ERROR, isError } from './model/error/error';
+
+import { AdvertisementToolInterface } from './model/advertisement-tool/advertisement-tool-interface';
+
 import * as chalk from 'chalk';
 const cheerio = require('cheerio');
 const argv = require('yargs').argv;
@@ -31,7 +39,9 @@ function datetime() {
  */
 class AppTest {
   root;
+  base: Base;
   forum: Forum;
+  adv: AdvertisementToolInterface;
   errorCount: number = 0;
   unexpectedCount: number = 0;
   successCount: number = 0;
@@ -44,9 +54,10 @@ class AppTest {
   };
 
   constructor() {
-    this.root = db.ref('/');
-    this.forum = new Forum();
-    this.forum.setRoot(this.root);
+    this.root = db.ref();
+    this.base = new Base();
+    this.forum = (new Forum()).setRoot(this.root);
+    this.adv = (new AdvertisementToolInterface()).setRoot(this.root);
     this.run();
   }
 
@@ -71,21 +82,42 @@ class AppTest {
       await this.testCreateAPost();
       await this.testPost();
       await this.testApi();
+      await this.testBackendPost();
       await this.testPostApi();
       await this.testCommentSimple();
       await this.testComment();
       await this.testCommentsTreeToArray();
       await this.testFriendlyUrl();
       await this.testSeo();
+      await this.testAdv();
     }
-
-
 
     setTimeout(() => {
       console.log(`Tests: ${this.successCount + this.errorCount}, successes: ${this.successCount}, errors: ${this.errorCount}`);
     }, 1000);
 
   }
+
+
+  /**
+   * 
+   * Use this to test the real backend environemnt.
+   * @note You must also do 'unit-test' on indivisual mehtods.
+   * 
+   * @param body User input to call backend.
+   * @param send Callback with return data from backend.
+   * 
+   * @warning @attention When you are going to call BackendApi::run(), you cannot use 'async' or 'Promise' since it uses callback.
+   * @warning @attention BackendApi::run() will be triggered by web browser and the result will be sent back to browser using 'Express::resopnse'
+   * 
+   */
+  backend(body, send) {
+    let req = { body: body };
+    let res = { send: send };
+    (new BackendApi(db.ref(), req, res)).run();
+  }
+
+
 
   async testIDFormat() {
 
@@ -135,7 +167,7 @@ class AppTest {
 
 
 
-    console.log(`prepareTest() ==> generateSecretKey of ${this.userA.uid}` );
+    console.log(`prepareTest() ==> generateSecretKey of ${this.userA.uid}`);
     await this.forum.generateSecretKey(this.userA.uid)
       .then(secret => {
         this.userA.secret = secret;
@@ -506,13 +538,17 @@ class AppTest {
 
 
   async testApi() {
+    console.log("\n =========================== testApi() =================================");
+
     await this.forum.api([])
       .catch(e => this.expect(e.message, ERROR.api_function_is_not_provided, "api call without function properly failed."));
     await this.forum.api({ function: '' })
       .catch(e => this.expect(e.message, ERROR.api_function_name_is_empty, "api call with empty function anme properly faield"));
 
     await this.forum.api({ function: 'wrong' })
-      .catch(e => this.expect(e.message, ERROR.api_that_function_is_not_allowed, "api call with wrong function name properly failed"));
+      .catch(e => {
+        this.expect(this.base.getErrorCode(e), ERROR.api_that_function_is_not_allowed_in_forum, "api call with wrong function name properly failed");
+      });
 
   }
 
@@ -525,7 +561,7 @@ class AppTest {
 
     this.userA.secret = await this.forum.getSecretKey(this.userA.uid)
       .then(key => {
-        this.success(`Got key: `);
+        this.success(`Got key: ${key}`);
         return key;
       })
       .catch(e => {
@@ -540,7 +576,7 @@ class AppTest {
       secret: this.userA.secret
     })
       .then(() => { this.error("wrong function name must fail.") })
-      .catch(e => this.expect(e.message, ERROR.api_that_function_is_not_allowed, 'Wrong function name test'));
+      .catch(e => this.expect(this.base.errcode(e), ERROR.api_that_function_is_not_allowed_in_forum, 'Wrong function name test:' + this.base.errmsg(e)));
 
 
 
@@ -665,6 +701,59 @@ class AppTest {
 
     // post CRUD by admin.
 
+  }
+
+  async testBackendPost() {
+
+    console.log("\n ====================== testBackendPost() =========================");
+    let body = {};
+    await this.backend(body, re => this.expect(re['code'], ERROR.api_function_is_not_provided, "function not provided"));
+    body['function'] = '';
+    await this.backend(body, re => this.expect(re['code'], ERROR.api_function_name_is_empty, "empty uid"));
+    body['function'] = 'wrong_function_name is not allowed';
+    await this.backend(body, re => this.expect(this.base.getErrorCode(re), ERROR.uid_is_empty, "Empty uid: " + this.base.parseError(re['code']).message));
+
+
+    body['function'] = 'createPost';
+    body['uid'] = this.userA.uid;
+    await this.backend(body, re => this.expect(re['code'], ERROR.secret_is_empty, "empty secret"));
+    body['secret'] = this.userA.secret;
+
+
+
+
+    body['function'] = 'forum.createPost';
+    await this.backend(body, re => {
+      // console.log(re);
+      this.expect(re['code'], ERROR.no_categories, "No category");
+    });
+
+    /// Break reference from 'body'
+    let p2 = Object.assign({}, body);
+    p2['categories'] = ['abc'];
+    console.log("Going to create");
+    let postKey = this.backend(p2, re => {
+      if (this.isPushKey(re['data'])) {
+        this.success("Post created with: " + re.data);
+
+        ///
+        console.log("Going to get post");
+        this.forum.getPostData(re.data).then(p => console.log(p))
+          .catch(e => this.error('create failed: ' + e.message));
+
+        return re.data;
+      }
+      else {
+        this.error("Post create failed:");
+        return null;
+      }
+    });
+
+
+
+    console.log("finish testBackendPost() before callback?");
+
+    return;
   }
 
 
@@ -965,83 +1054,83 @@ class AppTest {
     let p = begin.key;
 
     console.log("Going to create comments for order test. it will take some time....");
-    let pathA = await this.createAComment( p, 'A' );
-    let pathB = await this.createAComment( p, 'B' );
-    let pathC = await this.createAComment( p, 'C' );
+    let pathA = await this.createAComment(p, 'A');
+    let pathB = await this.createAComment(p, 'B');
+    let pathC = await this.createAComment(p, 'C');
 
-    let pathBA = await this.createAComment( pathB, 'BA');
-    let pathBA1 = await this.createAComment( pathBA, 'BA1');
-    let pathBA2 = await this.createAComment( pathBA, 'BA2');
-    
-    let pathBA1A = await this.createAComment( pathBA1, "BA1A" );
+    let pathBA = await this.createAComment(pathB, 'BA');
+    let pathBA1 = await this.createAComment(pathBA, 'BA1');
+    let pathBA2 = await this.createAComment(pathBA, 'BA2');
+
+    let pathBA1A = await this.createAComment(pathBA1, "BA1A");
 
 
-    let pathD = await this.createAComment( p, 'D' );
-    let pathD1 = await this.createAComment( pathD, 'D1' );
-    let pathD2 = await this.createAComment( pathD, 'D2' );
-    let pathD2A = await this.createAComment( pathD2, 'D2A' );
-    let pathD2A1 = await this.createAComment( pathD2A, 'D2A1' );
-    let pathD2A1A = await this.createAComment( pathD2A1, 'D2A1A' );
-    let pathD2A2 = await this.createAComment( pathD2A, 'D2A2' );
-    let pathD2B = await this.createAComment( pathD, 'D2B' );
-    let pathD3 = await this.createAComment( pathD, 'D3' );
-    let pathD4 = await this.createAComment( pathD, 'D4' );
-    
-
+    let pathD = await this.createAComment(p, 'D');
+    let pathD1 = await this.createAComment(pathD, 'D1');
+    let pathD2 = await this.createAComment(pathD, 'D2');
+    let pathD2A = await this.createAComment(pathD2, 'D2A');
+    let pathD2A1 = await this.createAComment(pathD2A, 'D2A1');
+    let pathD2A1A = await this.createAComment(pathD2A1, 'D2A1A');
+    let pathD2A2 = await this.createAComment(pathD2A, 'D2A2');
+    let pathD2B = await this.createAComment(pathD, 'D2B');
+    let pathD3 = await this.createAComment(pathD, 'D3');
+    let pathD4 = await this.createAComment(pathD, 'D4');
 
 
 
-    let pathE = await this.createAComment( p, 'E' );
-    let pathF = await this.createAComment( p, 'F' );
-    let pathG = await this.createAComment( p, 'G' );
-    let pathH = await this.createAComment( p, 'H' );
-    let pathI = await this.createAComment( p, 'I' );
-    let pathJ = await this.createAComment( p, 'J' );
 
 
-    let pathBA1B = await this.createAComment( pathBA1, "BA1B" );
+    let pathE = await this.createAComment(p, 'E');
+    let pathF = await this.createAComment(p, 'F');
+    let pathG = await this.createAComment(p, 'G');
+    let pathH = await this.createAComment(p, 'H');
+    let pathI = await this.createAComment(p, 'I');
+    let pathJ = await this.createAComment(p, 'J');
 
 
-    let pathD2A1A1 = await this.createAComment( pathD2A1, 'D2A1A1' );
-    let pathD2A1A1a = await this.createAComment( pathD2A1A1, 'D2A1A1-a' );
-    let pathD2A1A1b = await this.createAComment( pathD2A1A1, 'D2A1A1-b' );
-    let pathD2A1A1c = await this.createAComment( pathD2A1A1, 'D2A1A1-c' );
-    let pathD2A1A1d = await this.createAComment( pathD2A1A1, 'D2A1A1-d' );
+    let pathBA1B = await this.createAComment(pathBA1, "BA1B");
 
-    
+
+    let pathD2A1A1 = await this.createAComment(pathD2A1, 'D2A1A1');
+    let pathD2A1A1a = await this.createAComment(pathD2A1A1, 'D2A1A1-a');
+    let pathD2A1A1b = await this.createAComment(pathD2A1A1, 'D2A1A1-b');
+    let pathD2A1A1c = await this.createAComment(pathD2A1A1, 'D2A1A1-c');
+    let pathD2A1A1d = await this.createAComment(pathD2A1A1, 'D2A1A1-d');
+
+
 
     let comments = await this.forum.getComments(begin.key).catch(e => this.error(e.message));
-    
-    this.expect( Object.keys(comments).length, 10, "root comments are created properly.");
 
-    let res = this.forum.commentsTreeToArray( comments );
+    this.expect(Object.keys(comments).length, 10, "root comments are created properly.");
+
+    let res = this.forum.commentsTreeToArray(comments);
 
 
     // console.log(res);
     let contents = [];
 
-    for ( let p of res ) {
-      contents.push( p.content );
+    for (let p of res) {
+      contents.push(p.content);
     }
 
 
     contents.sort();
     let match = true;
-    for ( let i = 0 ; i < contents.length; i ++ ) {
-      if ( contents[ i ] != res[i]['content'] ) {
-        console.log( `${contents[i]} != ${res[i]['content']}` );
+    for (let i = 0; i < contents.length; i++) {
+      if (contents[i] != res[i]['content']) {
+        console.log(`${contents[i]} != ${res[i]['content']}`);
         match = false;
       }
     }
 
-    this.test( match, "All replies are in order.");
-    
+    this.test(match, "All replies are in order.");
+
   }
 
 
   async testCommentSimple() {
-    let p = await this.createAComment('-KohAgezTF-yX6skgQVM', 'Simple 1' ).catch( e => this.error( e.message ) );
-    this.test( p, "Comment created with: " + p);
+    let p = await this.createAComment('-KohAgezTF-yX6skgQVM', 'Simple 1').catch(e => this.error(e.message));
+    this.test(p, "Comment created with: " + p);
 
   }
 
@@ -1057,6 +1146,73 @@ class AppTest {
       .catch(e => this.error(e.message));
 
   }
+
+  async testAdv() {
+    console.log("\n ======================== testAvd() =============================");
+
+    // this.backend({}, r => this.expect(r['code'], ERROR.requeset_is_empty, 'Calling with empty request must be failed'));
+    this.backend({}, r => this.expect(r['code'], ERROR.api_function_is_not_provided, 'function not provided'));
+    this.backend({ function: '' }, r => this.expect(r['code'], ERROR.api_function_name_is_empty, 'empty function'));
+    this.backend({ function: 'advertisement.create' }, r => this.expect(r['code'], ERROR.uid_is_empty, 'empty uid'));
+
+    let body = {
+      function: 'advertisement.create',     /// wrong route
+      uid: this.userA.uid
+    }
+    this.backend(body, r => this.expect(r['code'], ERROR.secret_is_empty, 'empty secret'));
+
+
+    body['secret'] = 'wrong-secret';        /// wrong secret
+
+    /// Wrong route: calling create with backend environment.
+    this.backend(body, r => this.expect(this.base.errcode(r), ERROR.wrong_route_class, "wrong route: " + r['code']));
+
+
+    /// right route
+    body.function = 'adv.create';
+    this.backend(body, r => this.expect(this.base.errcode(r), ERROR.secret_does_not_match, "wrong secret: " + r['code']));
+
+
+
+
+
+
+    // body['function'] = 'advertiseemnt.arguments';
+    // this.backend(body, r => this.expect(r['code'], ERROR.api_function_exist_as_a_property_but_not_a_function, 'calling a property'));
+
+    /// calling create of interface directly.
+    body['function'] = 'advertisement.create';
+    body['subject'] = 'first adv!';
+    let key = await this.adv.create(body)
+      .then(key => { this.test(this.isPushKey(key), `Create success with Direct call of create advertisement interface: ${key}`); return key; })
+      .catch(e => this.error("create failed with: " + e.message));
+
+  }
+
+
+  isPushKey(k) {
+    if (!k) return false;
+    if (typeof k !== 'string') return false;
+    if (k.length > 21 || k.length < 19) return false;
+    if (k.charAt(0) != '-') return false;
+    return true;
+  }
+
+
+  // async testAdv_create() {
+  //   let req = {
+  //     body: {
+  //       function: 'advertisement.create'
+  //     }
+  //   };
+  //   let res = {
+  //     send: (r) => {
+  //       this.expect(r['code'], ERROR.uid_is_empty, 'Calling with empty uid must be failed');
+  //     }
+  //   }
+  //   new BackendApi(db, req, res);
+  // }
+
 }
 
 

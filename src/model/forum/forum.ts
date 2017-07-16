@@ -74,21 +74,6 @@ export class Forum extends Base {
             });
     }
 
-    /**
-     * Checks if the push key has in right form.
-     * @param key The push key
-     * @return true on error. false on success.
-     */
-    checkKey(key: string): boolean {
-        if (key === void 0 || !key) return true;
-        // if (key.length != 21) return true; // key can be made by user.
-        if (key.indexOf('#') != -1) return true;
-        if (key.indexOf('/') != -1) return true;
-        if (key.indexOf('.') != -1) return true;
-        if (key.indexOf('[') != -1) return true;
-        if (key.indexOf(']') != -1) return true;
-        return false;
-    }
 
     /**
      * 
@@ -896,13 +881,25 @@ export class Forum extends Base {
      * 
      * 
      * @attention Do not call "this.app.forum.api( comment ).then(...)" in front-end. It will give you permission denied.
+     * 
+     * @note the error check here is duplicated from base.ts. But leave it as it is because the error checkup is needed by unit testing.
+     *          other classes like 'AdvertisementTool' does not have error check like below since they test with 'Backend'.
+     * 
+     * @todo check if 'function not exists' properly work.
      */
     api(params): firebase.Promise<any> {
 
         if (params === void 0) return this.error(ERROR.requeset_is_empty);
         let func = params['function'];
-        
-        if (allowedApiFunctions.indexOf(func) == -1) return this.error(ERROR.api_that_function_is_not_allowed);
+
+        /// This tests must be here. It is being called from 'test.js' and 'index.js'
+        if (func === void 0) return this.error(ERROR.api_function_is_not_provided);
+        if (!func) return this.error(ERROR.api_function_name_is_empty);
+
+
+        let f = this.getClassFunction(func);
+
+        if (allowedApiFunctions.indexOf(f.functionName) == -1) return this.error(ERROR.api_that_function_is_not_allowed_in_forum, func);
 
         if (!params['uid']) return this.error(ERROR.uid_is_empty);
         if (this.checkKey(params.uid)) return this.error(ERROR.malformed_key);
@@ -915,10 +912,11 @@ export class Forum extends Base {
                     return key;
                 } else return this.error(ERROR.secret_does_not_match);
             })
-            .then(key => this[func](params));
+            .then(key => this[f.functionName](params));
 
     }
 
+    
 
 
 
