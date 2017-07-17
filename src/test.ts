@@ -55,6 +55,15 @@ class AppTest {
     secret: ''
   };
 
+  
+  userB = {
+    uid: '-push-key-for-user-b',
+    name: 'UserB',
+    secret: ''
+  };
+
+  
+
   constructor() {
     this.root = db.ref();
     this.base = new Base();
@@ -65,18 +74,13 @@ class AppTest {
 
   async run() {
 
-
-
     this.log("TEST BEGIN at: " + (new Date).getMinutes() + ':' + (new Date).getSeconds());
 
     let re;
 
     // console.log(argv._);
 
-
-
     await this.prepareTest();
-
 
     if (argv._.length == 2 && argv._[0]) {
       let method: string = argv._[0];
@@ -196,6 +200,16 @@ class AppTest {
         this.error(`generateSecretKey failed`);
       })
 
+
+      await this.forum.generateSecretKey(this.userB.uid)
+      .then(secret => {
+        this.userB.secret = secret;
+        this.success(`key: ${secret} generated for ${this.userB.name}`);
+      })
+      .catch(e => {
+        console.log("ERROR", e);
+        this.error(`generateSecretKey failed`);
+      })
 
 
   }
@@ -360,6 +374,7 @@ class AppTest {
   async testCreateAPost(category = "abc", subject = " e~ Hhem... This is subject. ^^; ", uid = "This-is-uid", secret = "This-is-secreit", content = '') {
     /// post create and get
     let post: POST_CREATE = { secret: secret, uid: uid, categories: [category], subject: subject, content: content };
+    // console.log(post);
     let key = await this.forum.createPost(post).catch(e => this.error("Post should be created => " + e.message));
     let p = await this.forum.getPostData(key)
       .catch(e => this.error("getPostData() failed with key: " + key));
@@ -910,14 +925,12 @@ class AppTest {
               secret: this.userA.secret,
               content: 'updated'
             };
+
             this.backendExpectSuccess(edit, 'comment edit', res => {
               this.forum.getComments(createdPath).then((edited: COMMENT) => {
                 this.expect(createdPath, edited.path, "path are equal after edit");
                 this.test(c0.content != edited.content, "yes, content updated");
                 this.expect(edited.content, "updated", "yes, content is updated");
-
-
-
 
                 let del: COMMENT = {
                   route: 'deleteComment',
@@ -927,8 +940,6 @@ class AppTest {
                 };
                 this.backendExpectSuccess(del, 'delete', res => {
                   this.expect(c0.path, res.data, "created Path and deleted Path matches");
-
-
 
                   this.forum.getComments(c0.path).then((comment: COMMENT) => {
                     this.expect(comment, null, "comment deleted");
@@ -1017,6 +1028,39 @@ class AppTest {
 
 
   }
+
+  async testPush() {
+
+    let begin: POST = await this.testCreateAPost('abc', 'push test', '-uid-push-test');
+    let p = begin.key;
+
+    let pathA = await this.createAComment(p, 'A');
+    let pathB = await this.createAComment(p, 'B');
+    let pathC = await this.createAComment(p, 'C');
+
+
+    let pathBA = await this.createAComment(pathB, 'BA', this.userB.uid, this.userB.secret);
+    let pathBA1 = await this.createAComment(pathBA, 'BA1');
+    let pathBA2: string = await this.createAComment(pathBA, 'BA2');
+    let pathBA2A: string = await this.createAComment(pathBA2, 'BA2A');
+
+    console.log("pathBA2A: ", pathBA2A);
+
+    // let paths = pathBA2.split('/');
+    
+
+    let uids = await this.forum.getCommentUids( pathBA2A );
+
+
+    this.test( uids.length == 5, "5 uids" );
+    this.test( uids[0] == '-uid-push-test', 'push test uid ok' );
+    this.test( uids[1] == this.userA.uid, 'user a uid');
+    this.test( uids[2] == this.userB.uid, 'user b uid');
+    this.test( uids[3] == this.userA.uid, 'user a uid');
+    this.test( uids[4] == this.userA.uid, 'user a uid');
+
+
+  }
   async testCommentsTreeToArray() {
 
     let begin: POST = await this.testCreateAPost('abc', 'Begin');
@@ -1046,9 +1090,6 @@ class AppTest {
     let pathD2B = await this.createAComment(pathD, 'D2B');
     let pathD3 = await this.createAComment(pathD, 'D3');
     let pathD4 = await this.createAComment(pathD, 'D4');
-
-
-
 
 
     let pathE = await this.createAComment(p, 'E');
@@ -1106,11 +1147,12 @@ class AppTest {
   }
 
 
-  createAComment(path, content): firebase.Promise<any> {
+  createAComment(path, content, uid?, secret?): firebase.Promise<any> {
     let BA1: COMMENT = {
       route: 'createComment',
       path: path,
-      uid: this.userA.uid,
+      uid: uid ? uid : this.userA.uid,
+      secret: secret ? secret : this.userA.secret,
       content: content
     };
     return this.forum.createComment(BA1)

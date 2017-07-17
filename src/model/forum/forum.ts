@@ -448,6 +448,7 @@ export class Forum extends Base {
     }
 
     /**
+     * Edit a comment and return a promise with its path.
      * 
      * @param comment Comment to edit
      * @return a promise with comment path ( full path )
@@ -475,10 +476,15 @@ export class Forum extends Base {
 
     /**
      * 
-     * Returns a promise of 'uid'.
+     * Returns a promise of 'uid' based on the path.
+     * 
      * 
      * @param path Path of comment
      * @return a promise of uid.
+     * 
+     * @example editComment()
+     * @example use this to get the uid of a comment.
+     * 
      */
     async getCommentUid(path): Promise<string> {
         if (this.isEmpty(path)) return this.error(ERROR.empty_path_on_get_comment_uid);
@@ -486,6 +492,34 @@ export class Forum extends Base {
             if (snap.val()) return snap.val();
             else return '';
         });
+    }
+
+    async getPostUid(postKey): Promise<string> {
+        if (this.isEmpty(postKey)) return this.error(ERROR.empty_key_on_get_post_uid);
+        return this.postData(postKey).child('uid').once('value').then(snap => {
+            if (snap.val()) return snap.val();
+            else return '';
+        });
+    }
+
+    async getCommentUids(path:string): Promise<Array<string>>  {
+        let uids: Array<string> = [];
+
+        if ( !path || typeof path !== 'string' ) return uids;
+        let paths = path.split('/');
+        if ( ! paths.length ) return uids;
+        if ( paths.length > 1 ) {
+            let len = paths.length;
+            for( let i = 0; i < len - 1; i ++ ) {
+                let newPath = paths.join('/');
+                // console.log("newPath: ", newPath);
+                uids.push( await this.getCommentUid( newPath ) );
+                paths.pop();
+            }
+        }
+
+        uids.push( await this.getPostUid( paths[0] ) );
+        return uids.reverse();
     }
 
 

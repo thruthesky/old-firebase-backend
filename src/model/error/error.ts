@@ -81,6 +81,7 @@ export const ERROR = {
     // ancestors_is_not_array_on_comment_create: 'ancestors_is_not_array_on_comment_create',
     // ancestors_is_empty_array_on_comment_create: 'ancestors_is_empty_array_on_comment_create',
     empty_path_on_get_comment_uid: 'empty_path_on_get_comment_uid',
+    empty_key_on_get_post_uid: 'empty_key_on_get_post_uid',
     permission_denied_not_your_comment_on_edit_comment: 'permission_denied_not_your_comment_on_edit_comment',
     post_not_found_by_that_key_on_create_comment: 'post_not_found_by_that_key_on_create_comment',
     path_is_empty_on_create_comment: 'path_is_empty_on_create_comment',
