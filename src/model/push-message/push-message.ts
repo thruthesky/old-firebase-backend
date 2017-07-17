@@ -9,9 +9,6 @@ import * as firebase from 'firebase';
 import { Observable } from 'rxjs/Observable';
 import 'rxjs/add/operator/toPromise';
 
-
-
-
 import { Base } from './../base/base';
 
 import {
@@ -22,8 +19,9 @@ import {
 import { ERROR } from './../error/error';
 import { UserService } from './../user/user.service';
 
-
 const USER_TOKEN = 'user-token';
+
+
 
 @Injectable()
 export class PushMessageService extends Base {
@@ -35,10 +33,7 @@ export class PushMessageService extends Base {
         private user: UserService
     ) {
         super();
-
         this.runIfWeb();
-
-
     }
 
     get isCordova(): boolean {
