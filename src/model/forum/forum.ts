@@ -502,7 +502,11 @@ export class Forum extends Base {
         });
     }
 
-    async getCommentUids(path:string): Promise<Array<string>>  {
+    /**
+     * Returns UID(s) of post and comments in the tree path.
+     * @param path path of a comment
+     */
+    async getRootUids(path:string): Promise<Array<string>>  {
         let uids: Array<string> = [];
 
         if ( !path || typeof path !== 'string' ) return uids;

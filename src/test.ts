@@ -1049,7 +1049,7 @@ class AppTest {
     // let paths = pathBA2.split('/');
     
 
-    let uids = await this.forum.getCommentUids( pathBA2A );
+    let uids = await this.forum.getRootUids( pathBA2A );
 
 
     this.test( uids.length == 5, "5 uids" );
