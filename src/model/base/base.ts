@@ -220,6 +220,15 @@ export class Base {
         if (key.indexOf('.') != -1) return true;
         if (key.indexOf('[') != -1) return true;
         if (key.indexOf(']') != -1) return true;
+        // if ( key.length != 20 ) return true;
+
+        /// additional restriction. we do not use keys like below.
+
+        // if (key.indexOf('{') != -1) return true;
+        // if (key.indexOf('}') != -1) return true;
+        // if (key.indexOf(':') != -1) return true;
+        // if (key.indexOf('"') != -1) return true;
+        // if (key.indexOf('\'') != -1) return true;
         return false;
     }
 
@@ -273,7 +282,7 @@ export class Base {
     getSecretKey(uid: string): firebase.Promise<any> {
         //
         if (!uid) return this.error(ERROR.uid_is_empty);
-        console.log(`Base::getSecretKey() of ${uid}`);
+        //console.log(`Base::getSecretKey() of ${uid}`);
 
         return this.root.child(SECRET_KEY_PATH).child(uid).once('value')
             .then(snap => {

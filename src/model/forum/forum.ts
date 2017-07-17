@@ -3,7 +3,7 @@ import { Base } from './../base/base';
 import { ERROR } from '../error/error';
 
 import {
-    CATEGORY_PATH, CATEGORY, CATEGORIES, POST,
+    CATEGORY_PATH, CATEGORY, CATEGORIES, POST, POST_CREATE, POST_EDIT,
     POST_DATA_PATH, CATEGORY_POST_RELATION_PATH, ALL_CATEGORIES,
     POST_FRIENDLY_URL_PATH, COMMENT, COMMENT_PATH
 } from './../../interface';
@@ -203,9 +203,20 @@ export class Forum extends Base {
      * @use when you need to check the post data for create/edit.
      * @param post Post data from user
      */
-    checkPost(post): string {
+    checkPost(post:POST): string {
         if (post === void 0) return ERROR.post_data_is_empty;
-        if (this.isEmptyCategory(post)) return ERROR.no_categories;
+
+        /// When there is no key, it means, post create, so, categories are needed.
+        if ( post.key === void 0 || ! post.key  ) {
+            if (this.isEmptyCategory(post)) {
+                return ERROR.no_categories;
+            }
+        }
+        /// if key exists,
+        else {
+            // console.log("key: ", post.key);
+            if ( this.checkKey( post.key ) ) return ERROR.malformed_key;
+        }
         return null;
     }
 
@@ -222,9 +233,9 @@ export class Forum extends Base {
      * @param post Post data to create
      * @return a promise with post key.
      */
-    async createPost(post: POST): Promise<any> {
+    async createPost(post: POST_CREATE): Promise<any> {
         if (this.checkPost(post)) return this.error(this.checkPost(post));
-        if (post.key) return this.error(ERROR.post_key_exists_on_create);
+        if (post['key']) return this.error(ERROR.post_key_exists_on_create);
         await this.categoriesExist(post.categories);
         let ref = this.postData().push();
 
@@ -287,15 +298,16 @@ export class Forum extends Base {
         if (this.checkPost(post)) return this.error(this.checkPost(post));
         if (!post.key) return this.error(ERROR.post_key_empty);
 
-        await this.getPostData(post.key);
+        // await this.getPostData(post.key);
 
         await this.categoriesExist(post.categories);
+
         let old_post = await this.getPostData(post.key);
 
         if (post.uid != old_post.uid) return this.error(ERROR.permission_denied);
 
+        
         let ref = this.postData(post.key);
-
         delete post.secret;
         return this.setPostData(ref, post, old_post);
     }
@@ -335,10 +347,11 @@ export class Forum extends Base {
      * @return on success, a promise with post key.
      *      otherwise, .catch() will be invoked.
      */
-    setPostData(ref: firebase.database.Reference, post: POST, old_post?: POST): firebase.Promise<any> {
+    setPostData(ref: firebase.database.Reference, post, old_post?: POST): firebase.Promise<any> {
         post.key = ref.key;
         // console.log('ref: ', ref.toString());
         post.stamp = (new Date()).getTime();
+
         return ref.set(post)
             .then(() => this.setCategoryPostRelation(post.key, post, old_post)) // category post relation
             .then(() => post.key);
@@ -483,6 +496,10 @@ export class Forum extends Base {
      * @return a promise of comment/comments.
      *      - It can return only a single comment
      *      - Or it can return all nesting comments.
+     * 
+     * @warning you need to understand the structure.
+     * @see https://docs.google.com/document/d/1m3-wYZOaZQGbAzXeVlIpJNSdTIt3HCUiIt9UTmZUgXo/edit#heading=h.htf2a94v3tze
+     * 
      */
     getComments(path): firebase.Promise<any> {
         // console.log("getComment: ", path);
@@ -571,7 +588,7 @@ export class Forum extends Base {
      * @param categories Array of categories
      * 
      * @return Promise
-     *      true promise on success.
+     *      true promise on success or if there is no categories passed.
      *      otherwise error promise.
      * 
      * 
@@ -596,6 +613,7 @@ export class Forum extends Base {
      * @endcode
      */
     async categoriesExist(categories: Array<string>) {
+        if ( !categories || !categories.length || categories.length == 0 ) return true;
         for (let category of categories) {
             await this.categoryExists(category);
         }
@@ -611,7 +629,7 @@ export class Forum extends Base {
      *      on sucess, promise with true.
      */
     categoryExists(category: string): firebase.Promise<any> {
-
+        // console.log(category);
         return this.category(category).once('value')
             .then(s => {
                 // if ( category == 'def' ) debugger;
@@ -647,13 +665,8 @@ export class Forum extends Base {
 
         if (!new_post || !new_post.categories || !new_post.categories.length) return;
 
-        // delete old categories.
-        // if ( old_post && old_post.categories && old_post.categories.length  ) {
-        //     for (let category of old_post.categories) {
-        //         await this.categoryPostRelation.child( category ).child(old_post.key).set( null );
-        //     }
-        // }
         if (old_post) await this.deleteCategoryPostRelation(old_post.key, old_post.categories);
+
 
 
         for (let category of new_post.categories) {
@@ -664,6 +677,7 @@ export class Forum extends Base {
             await this.categoryPostRelation().child(category).child(key).set(true);
         }
         await this.categoryPostRelation().child(ALL_CATEGORIES).child(key).set(true);
+
     }
 
     /**
@@ -890,32 +904,32 @@ export class Forum extends Base {
      * @todo check if 'function not exists' properly work.
      * 
      */
-    api(params): firebase.Promise<any> {
+    api(params) {
 
-        if (params === void 0) return this.error(ERROR.requeset_is_empty);
-        let route = params['route'];
+        // if (params === void 0) return this.error(ERROR.requeset_is_empty);
+        // let route = params['route'];
 
-        /// This tests must be here. It is being called from 'test.js' and 'index.js'
-        if (route === void 0) return this.error(ERROR.api_route_is_not_provided);
-        if (!route) return this.error(ERROR.api_route_is_empty);
+        // /// This tests must be here. It is being called from 'test.js' and 'index.js'
+        // if (route === void 0) return this.error(ERROR.api_route_is_not_provided);
+        // if (!route) return this.error(ERROR.api_route_is_empty);
 
 
-        let f = this.getClassMethod(route);
+        // let f = this.getClassMethod(route);
 
-        if (allowedApiFunctions.indexOf(f.methodName) == -1) return this.error(ERROR.api_that_route_is_not_allowed, route);
+        // if (allowedApiFunctions.indexOf(f.methodName) == -1) return this.error(ERROR.api_that_route_is_not_allowed, route);
 
-        if (!params['uid']) return this.error(ERROR.uid_is_empty);
-        if (this.checkKey(params.uid)) return this.error(ERROR.malformed_key);
+        // if (!params['uid']) return this.error(ERROR.uid_is_empty);
+        // if (this.checkKey(params.uid)) return this.error(ERROR.malformed_key);
 
-        if (!params['secret']) return this.error(ERROR.secret_is_empty);
+        // if (!params['secret']) return this.error(ERROR.secret_is_empty);
 
-        return this.getSecretKey(params.uid)
-            .then(key => {          /// secret key check for security.
-                if (key === params['secret']) {
-                    return key;
-                } else return this.error(ERROR.secret_does_not_match);
-            })
-            .then(key => this[f.methodName](params));
+        // return this.getSecretKey(params.uid)
+        //     .then(key => {          /// secret key check for security.
+        //         if (key === params['secret']) {
+        //             return key;
+        //         } else return this.error(ERROR.secret_does_not_match);
+        //     })
+        //     .then(key => this[f.methodName](params));
 
     }
 

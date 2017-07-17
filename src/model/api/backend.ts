@@ -47,11 +47,7 @@ export class BackendApi extends Base {
         if (taxonomy[f.methodName] === void 0) return this.res.send({ code: this.makeErrorString(ERROR.api_route_not_exsit, f.methodName) });
         if (typeof taxonomy[f.methodName] !== 'function') return this.res.send({ code: ERROR.api_route_exist_as_a_property_but_not_a_function });
 
-
-
-
         taxonomy.setRoot(this.root);
-
 
         this.getSecretKey(params.uid)
             .then(key => {                                  /// secret key check for security.

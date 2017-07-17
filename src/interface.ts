@@ -98,10 +98,17 @@ interface UID {
     uid: string;
 }
 interface KEY {
+    key: string;
+}
+interface KEY_O {
     key?: string;
 }
+
 interface CATEGORIES {
     categories: Array<string>;
+}
+interface CATEGORIES_O {
+    categories?: Array<string>;
 }
 
 interface POST_COMMON {
@@ -124,7 +131,10 @@ interface POST_COMMON {
 
 // export interface POST_CREATE extends REQUEST, UID, CATEGORIES, POST_COMMON {};
 // export interface POST_EDIT extends POST_CREATE, KEY {};
-export interface POST extends REQUEST, UID, KEY, CATEGORIES, POST_COMMON { };
+export interface POST extends REQUEST, UID, KEY_O, CATEGORIES, POST_COMMON {};
+
+export interface POST_CREATE extends REQUEST, UID, CATEGORIES, POST_COMMON {};
+export interface POST_EDIT extends REQUEST, UID, KEY, CATEGORIES_O, POST_COMMON {};
 export type POSTS = Array<POST>;
 
 

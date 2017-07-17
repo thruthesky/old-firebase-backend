@@ -17,7 +17,7 @@ import { Forum } from './model/forum/forum';
 
 import { BackendApi } from './model/api/backend';
 
-import { POST, CATEGORY, ALL_CATEGORIES, COMMENT } from './interface';
+import { POST, POST_CREATE, POST_EDIT, CATEGORY, ALL_CATEGORIES, COMMENT } from './interface';
 import { ERROR, isError } from './model/error/error';
 
 import { AdvertisementToolInterface } from './model/advertisement-tool/advertisement-tool-interface';
@@ -77,6 +77,7 @@ class AppTest {
 
     await this.prepareTest();
 
+
     if (argv._.length == 2 && argv._[0]) {
       let method: string = argv._[0];
       // if (method.toLowerCase().indexOf('cloud') == -1) await this.prepareTest();
@@ -91,7 +92,8 @@ class AppTest {
       await this.testApi();
       await this.testBackendApi();
       await this.testBackendPost();
-      await this.testPostApi();
+      await this.testCreateCommentsWithModel();
+      this.testCloudFunctionsPost();
       await this.testCommentSimple();
       await this.testComment();
       await this.testCommentsTreeToArray();
@@ -103,7 +105,7 @@ class AppTest {
 
     setTimeout(() => {
       console.log(`Tests: ${this.successCount + this.errorCount}, successes: ${this.successCount}, errors: ${this.errorCount}`);
-    }, 1000);
+    }, 5000);
 
   }
 
@@ -123,7 +125,26 @@ class AppTest {
   backend(body, send) {
     let req = { body: body };
     let res = { send: send };
-    (new BackendApi(db.ref(), req, res)).run();
+    (new BackendApi(this.root, req, res)).run();
+  }
+  backendExpect(body, ex, msg?, callback?) {
+    this.backend(body, res => {
+      this.expect(this.base.errcode(res), ex, msg || '');
+      if (callback) callback(res);
+    });
+  }
+  backendExpectSuccess(body, msg?, callback?) {
+    this.backend(body, res => {
+      this.test(this.base.errcode(res) == null, msg || '');
+      if (callback) callback(res);
+    });
+  }
+  backendExpectKey(body, msg?, callback?) {
+    this.backend(body, res => {
+      this.test(this.isPushKey(res.data), msg);
+      if (callback) callback(res.data);
+      // if (callback) callback(res.data);
+    });
   }
 
 
@@ -338,7 +359,7 @@ class AppTest {
    */
   async testCreateAPost(category = "abc", subject = " e~ Hhem... This is subject. ^^; ", uid = "This-is-uid", secret = "This-is-secreit", content = '') {
     /// post create and get
-    let post: POST = { secret: secret, uid: uid, categories: [category], subject: subject, content: content };
+    let post: POST_CREATE = { secret: secret, uid: uid, categories: [category], subject: subject, content: content };
     let key = await this.forum.createPost(post).catch(e => this.error("Post should be created => " + e.message));
     let p = await this.forum.getPostData(key)
       .catch(e => this.error("getPostData() failed with key: " + key));
@@ -537,50 +558,41 @@ class AppTest {
   async testApi() {
     console.log("\n =========================== testApi() =================================");
 
-    await this.forum.api({})
-      .catch(e => {
-        this.expect(this.base.errcode(e), ERROR.api_route_is_not_provided, "api call without route properly failed.");
-      });
-    await this.forum.api({ route: '' })
-      .catch(e => this.expect(e.message, ERROR.api_route_is_empty, "api call with empty route name properly faield"));
-
-    await this.forum.api({ route: 'wrong' })
-      .catch(e => {
-        this.expect(this.base.getErrorCode(e), ERROR.api_that_route_is_not_allowed, "api call with wrong route name properly failed");
-      });
-
   }
 
   async testBackendApi() {
-    this.backend( { route: 'forum.version', uid: '-wrong-uid', secret: 'secret' }, res => {
-      this.expect( this.base.errcode(res), ERROR.secret_does_not_match, "wrong uid & secret");
+    this.backend({}, res => {
+      this.expect(this.base.errcode(res), ERROR.api_route_is_not_provided, "api call without route properly failed.");
     });
+
+
+    this.backend({ route: '' }, res => {
+      this.expect(this.base.errcode(res), ERROR.api_route_is_empty, "api call with empty route name properly faield");
+    });
+
+    this.backend({ route: 'wrongRoute', uid: '-wrong-uid', secret: '-wrong-secret' }, res => {
+      this.expect(this.base.errcode(res), ERROR.api_route_not_exsit, "api call with wrong route name properly failed");
+    });
+
+    this.backend({ route: 'wrongRoute', secret: '-wrong-secret' }, res => {
+      this.expect(this.base.errcode(res), ERROR.uid_is_empty, "api call with wrong route name properly failed");
+    });
+
+
+    this.backend({ route: 'wrongRoute', uid: '-wrong-uid' }, res => {
+      this.expect(this.base.errcode(res), ERROR.secret_is_empty, "api call with wrong route name properly failed");
+    });
+
+    this.backend({ route: 'forum.version', uid: '-wrong-uid', secret: 'secret' }, res => {
+      this.expect(this.base.errcode(res), ERROR.secret_does_not_match, "wrong uid & secret");
+    });
+
   }
 
 
-  async testPostApi() {
+  testCloudFunctionsPost() {
 
-    console.log("\n =========================== testPostApi() =========================== ");
-
-
-    this.userA.secret = await this.forum.getSecretKey(this.userA.uid)
-      .then(key => {
-        this.success(`Got key: ${key}`);
-        return key;
-      })
-      .catch(e => {
-        console.log(e);
-        this.error("Failed to get secret key")
-      })
-
-
-    await this.forum.api({
-      route: "wrong-route-name",
-      uid: this.userA.uid,
-      secret: this.userA.secret
-    })
-      .then(() => { this.error("wrong route name must fail.") })
-      .catch(e => this.expect(this.base.errcode(e), ERROR.api_that_route_is_not_allowed, 'Wrong route name test:' + this.base.errextra(e)));
+    console.log("\n =========================== testCloudFunctionsPost() =========================== ");
 
 
 
@@ -595,115 +607,70 @@ class AppTest {
     };
 
     // expect error.
-    await this.forum.api(post)
-      .then(() => this.error("Calling postApi with no category must be failed."))
-      .catch(e => this.expect(e.message, ERROR.no_categories, 'postApi() for creating a post with no category properly failed'));
-
-
-    // expect error.
     post['categories'] = ['wrong-category'];
-    await this.forum.api(post)
-      .then(() => this.error("Calling postApi with wrong category must be failed."))
-      .catch(e => this.expect(e.message, ERROR.category_not_exist, 'postApi() for creating a post with wrong category properly failed'));
+    this.backendExpect(post, ERROR.category_not_exist, 'postApi() for creating a post with wrong category properly failed', res => {
+      post['categories'] = ['abc'];
+      post['secret'] = '-wrong-secret';
+      this.backendExpect(post, ERROR.secret_does_not_match, 'wrong secret', res => {
 
-    // expect error: wrong uid
-    post.secret = "-a-wrong-secret-key";
-    await this.forum.api(post)
-      .then(() => this.error("Calling postApi with wrong secret must be failed."))
-      .catch(e => this.expect(e.message, ERROR.secret_does_not_match, `'secert does match' properly failed`));
+        post.secret = this.userA.secret;
+        this.backendExpectKey(post, 'post create', key => {
+          post.route = 'forum.editPost';
+          post.key = key;
+          post.categories = [];
+          post.subject = "Subject updated...!";
+          post.content = "Content updated...!";
+          post.secret = this.userA.secret;
+          post.categories = ['-wrong-category-abc', 'def', 'flower'];
+          this.backendExpect(post, ERROR.category_not_exist, '', res => {
+            post.categories = ['abc'];
+            // console.log(post);
+            this.backend(post, res => {
+              // console.log('---------------');
+              // console.log(res);
+              // let p = JSON.parse(res);
+              this.forum.getPostData(res.data).then((p: POST) => {
 
+                this.expect(p.key, post.key, "postApi(route:edit) key match");
+                this.expect(p.subject, post.subject, "Subject edit with postApi(route:eidt) success.");
+                this.expect(p.content, post.content, "Content edit with postApi(route:eidt) success.");
 
-    post.secret = this.userA.secret;
-
-    // expect success.
-    post['categories'] = ['abc', 'flower'];
-    let key = await this.forum.api(post)
-      .then(key => { this.success("Post create with postApi(route:create) success . key: " + key); return key; })
-      .catch(e => this.error("A post should be created."));
-
-
-    // console.log("KEY ===> ", key);
-
-    /// edit with no category
-    post.route = 'editPost';
-    post.key = key;
-    post.categories = [];
-    post.subject = "Subject updated...!";
-    post.content = "Content updated...!";
-    post.secret = this.userA.secret;
-    await this.forum.api(post)
-      .then(() => this.error("Calling postApi with empty category must be failed."))
-      .catch(e => this.expect(e.message, ERROR.no_categories, 'postApi() for editing a post with no category properly failed'));
-
-
-    /// edit with wrong category
-    post.categories = ['abc', 'def', 'flower'];
-    await this.forum.api(post)
-      .then(() => this.error("Calling postApi with empty category must be failed."))
-      .catch(e => this.expect(e.message, ERROR.category_not_exist, 'postApi() for editing a post with wrong category properly failed'));
-
-    /// edit subject/content/category and check
-    post.categories = ['abc'];
-    await this.forum.api(post)
-      .then(key => {
-        this.success("Post edit success with: " + key);
-        this.forum.getPostData(key).then((p: POST) => {
-
-          this.expect(p.key, post.key, "postApi(route:edit) key match");
-          this.expect(p.subject, post.subject, "Subject edit with postApi(route:eidt) success.");
-          this.expect(p.content, post.content, "Content edit with postApi(route:eidt) success.");
+                this.forum.categoryPostRelation().child('flower').child(p.key).once('value')
+                  .then(s => this.expect(s.val(), null, "Post does not exist under flower category !!"));
+                this.forum.categoryPostRelation().child('abc').child(p.key).once('value')
+                  .then(s => this.expect(s.val(), true, "Post exists under abc category !!"));
 
 
-          this.forum.categoryPostRelation().child('flower').child(p.key).once('value')
-            .then(s => this.expect(s.val(), null, "Post does not exist under flower category !!"));
-          this.forum.categoryPostRelation().child('abc').child(p.key).once('value')
-            .then(s => this.expect(s.val(), true, "Post exists under abc category !!"));
+                // /// edit with wrong post key. expect error
+                let newData = Object.assign({}, post);
+                newData.key = '-wrong-post-key';
+                newData.secret = this.userA.secret;
+                this.backendExpect(newData, ERROR.post_not_found_by_that_key, '', res => {
 
-        })
-      })
-      .catch(e => this.error("Edit should be success."));
+                  /// delete post
+                  newData.key = post.key;
+                  newData.uid = '-wrong-uid';
+                  this.backendExpect(newData, ERROR.secret_does_not_match, '', res => {
+                    newData.uid = post.uid;
+                    this.backendExpectSuccess(newData, 'post deleted');
+                  });
 
+                });
+              });
 
-    /// edit with wrong post key. expect error
-    let newData = Object.assign({}, post);
-    newData.key = '-wrong-post-key';
-    newData.secret = this.userA.secret;
-    await this.forum.api(newData)
-      .then(() => this.error("Calling postApi with wrong post key must be failed."))
-      .catch(e => this.expect(e.message, ERROR.post_not_found_by_that_key, `'edit' properly failed`));
+            });
+          });
 
+        });
+      });
 
-    /// delete post
-    newData.route = 'deletePost';
-    newData.key = '-wrong-post-key';
-    await this.forum.api(newData)
-      .then(() => this.error("Calling postApi for delete with wrong post key must be failed."))
-      .catch(e => this.expect(e.message, ERROR.post_not_found_by_that_key, `'delete' properly failed`));
-
-    newData.key = post.key;
-    newData.uid = '-wrong-uid';
-
-    await this.forum.api(newData)
-      .then(() => this.error("Calling postApi for delete with wrong post key must be failed."))
-      .catch(e => this.expect(e.message, ERROR.secret_does_not_match, `'delete' of 'wrong-user' properly failed`));
-
-
-    newData.uid = post.uid;
-
-    await this.forum.api(newData)
-      .then(() => this.success(`delete success`))
-      .catch(e => this.error(`'delete' failed`));
-
-    await this.forum.getPostData(post.key)
-      .then(() => this.error('post was not deleted'))
-      .catch(e => this.expect(e.message, ERROR.post_not_found_by_that_key, 'post poroperly deleted'))
+    });
 
 
 
-    // @todo
-    // post create with key
 
-    // post CRUD by admin.
+
+
 
   }
 
@@ -754,8 +721,6 @@ class AppTest {
               secret: this.userA.secret,
               categories: ['abc']
             };
-
-
           })
           .catch(e => this.error('create failed: ' + e.message));
 
@@ -921,96 +886,91 @@ class AppTest {
 
   async testComment() {
 
-    console.log(" ================= testComment() ================== ");
+    // console.log(" ================= testComment() ================== ");
 
     let post: POST = await this.testCreateAPost('abc', 'This is subject');
-    //console.log(post);
 
 
     let comment: COMMENT = { route: 'createComment', path: '', uid: this.userA.uid, secret: this.userA.secret, content: 'hi' };
-    await this.forum.api(comment)
-      .then(key => this.error('create comment with empty ancestors must be failed.'))
-      .catch(e => this.expect(e.message, ERROR.path_is_empty_on_create_comment, "create comment with emtpy path properly failed."));
-
-
-    comment.path = 'a/c/b';
-    await this.forum.api(comment)
-      .then(key => this.error('create comment must be failed with wrong paht.'))
-      .catch(e => this.expect(e.message, ERROR.post_not_found_by_that_key_on_create_comment, "comment create with wrong-path properly failed."));
-
-
-    // success.
-    comment.path = post.key + '/a/c/b';
-    let createdPath = await this.forum.api(comment)
-      .then(path => {
-        this.success("Comment created properly: " + path);
-        return path;
-      })
-      .catch(e => this.error('create comment must be success..'));
+    this.backendExpect(comment, ERROR.path_is_empty_on_create_comment, '', res => {
+      comment.path = 'a/c/b';
+      this.backendExpect(comment, ERROR.post_not_found_by_that_key_on_create_comment, '', res => {
+        comment.path = post.key + '/a/c/b';
+        this.backendExpectSuccess(comment, 'create a comment.', res => {
+          let createdPath = res.data;
+          this.forum.getComments(createdPath).then((c0: COMMENT) => {
+            this.expect(c0.path, comment.path, "Patch match");
 
 
 
-
-    let created: COMMENT = await this.forum.getComments(createdPath);
-
-    // console.log(created);
-
-
-
-    let edit: COMMENT = {
-      route: 'editComment',
-      path: createdPath,
-      uid: this.userA.uid,
-      secret: this.userA.secret,
-      content: 'updated'
-    };
-
-    let bPath = edit.path;
-    let editedPath = await this.forum.api(edit)
-      .then(path => {
-        this.expect(path, bPath, "comment edited with proper path");
-        return path;
-      })
-      .catch(e => console.log(e));
-
-
-    let edited: COMMENT = await this.forum.getComments(editedPath);
-
-
-    this.expect(createdPath, edited.path, "path are equal after edit");
-    this.test(created.content != edited.content, "yes, content updated");
-    this.expect(edited.content, "updated", "yes, content is updated");
+            let edit: COMMENT = {
+              route: 'editComment',
+              path: createdPath,
+              uid: this.userA.uid,
+              secret: this.userA.secret,
+              content: 'updated'
+            };
+            this.backendExpectSuccess(edit, 'comment edit', res => {
+              this.forum.getComments(createdPath).then((edited: COMMENT) => {
+                this.expect(createdPath, edited.path, "path are equal after edit");
+                this.test(c0.content != edited.content, "yes, content updated");
+                this.expect(edited.content, "updated", "yes, content is updated");
 
 
 
-    let del: COMMENT = {
-      route: 'deleteComment',
-      path: editedPath,
-      uid: this.userA.uid,
-      secret: this.userA.secret
-    };
+
+                let del: COMMENT = {
+                  route: 'deleteComment',
+                  path: edited.path,
+                  uid: this.userA.uid,
+                  secret: this.userA.secret
+                };
+                this.backendExpectSuccess(del, 'delete', res => {
+                  this.expect(c0.path, res.data, "created Path and deleted Path matches");
 
 
 
-    let deletedPath = await this.forum.api(del)
-      .then(path => {
-        this.success("comment deleted");
-        return path;
-      })
-      .catch(e => console.log(e));
-
-    this.expect(createdPath, editedPath, "created Path and edited Path matches");
-    this.expect(editedPath, deletedPath, "deleted Path and edited Path matches");
+                  this.forum.getComments(c0.path).then((comment: COMMENT) => {
+                    this.expect(comment, null, "comment deleted");
+                  }).catch(e => this.error(e.message));
 
 
-    let deletedComment = await this.forum.getComments(editedPath)
-      .then(data => this.expect(data, null, "comment null after get. it is properly deleted."))
-      .catch(e => console.log(e));
+                })
 
+
+
+
+              });
+
+
+
+
+            });
+
+
+
+          });
+        });
+      });
+    });
+
+
+
+
+
+
+
+
+
+
+
+  }
+
+
+  async testCreateCommentsWithModel() {
 
 
     // create => comment => comment => comment
-
 
     let fruit: POST = await this.testCreateAPost('abc', 'This is a fruit');
     let apple: COMMENT = {
@@ -1052,14 +1012,6 @@ class AppTest {
 
     let childComment: COMMENT = apples[popSmallBlueAppleKey];
     this.expect(createdSmallBlueApple.content, childComment.content, "Nested comment compare ok");
-
-
-
-
-
-
-
-
 
 
 
@@ -1234,29 +1186,31 @@ class AppTest {
    */
   testCloudFunctions() {
 
+    console.log("\n ===================== testCloudFunctions ======================");
+
     let url = 'https://us-central1-sonub-e2b13.cloudfunctions.net/api';
     let form = {
     };
-    request.post({ url: url, form: form }, ( error, response, body ) => {
-      let res = JSON.parse( body );
-      this.expect( this.base.errcode( res ), ERROR.api_route_is_not_provided, "No route" );
+    request.post({ url: url, form: form }, (error, response, body) => {
+      let res = JSON.parse(body);
+      this.expect(this.base.errcode(res), ERROR.api_route_is_not_provided, "No route");
     });
     form['route'] = '';
-    request.post({ url: url, form: form }, ( error, response, body ) => {
-      let res = JSON.parse( body );
-      this.expect( this.base.errcode( res ), ERROR.api_route_is_empty, "Empty route" );
+    request.post({ url: url, form: form }, (error, response, body) => {
+      let res = JSON.parse(body);
+      this.expect(this.base.errcode(res), ERROR.api_route_is_empty, "Empty route");
     });
     form['route'] = 'forum.version';
     form['uid'] = '-wrong-uid';
     request.post({ url: url, form: form }, (error, response, body) => {
-      let res = JSON.parse( body );
-      this.expect( this.base.errcode( res ), ERROR.secret_is_empty, "Empty secret" );
+      let res = JSON.parse(body);
+      this.expect(this.base.errcode(res), ERROR.secret_is_empty, "Empty secret");
     });
 
     form['secret'] = '-wrong-secret';
     request.post({ url: url, form: form }, (error, response, body) => {
-      let res = JSON.parse( body );
-      this.expect( this.base.errcode( res ), ERROR.secret_does_not_match, "Empty route" );
+      let res = JSON.parse(body);
+      this.expect(this.base.errcode(res), ERROR.secret_does_not_match, "Empty route");
     });
 
 
@@ -1266,8 +1220,8 @@ class AppTest {
     form['uid'] = this.userA.uid;
     form['secret'] = this.userA.secret;
     request.post({ url: url, form: form }, (error, response, body) => {
-      let res = JSON.parse( body );
-      this.expect( res.data, this.base.version(), "Version" );
+      let res = JSON.parse(body);
+      this.expect(res.data, this.base.version(), "Version");
     });
 
 
@@ -1276,9 +1230,9 @@ class AppTest {
     form['subject'] = 'A subject';
     form['content'] = 'A content';
     request.post({ url: url, form: form }, (error, response, body) => {
-      console.log( body );
-      let res = JSON.parse( body );
-      this.expect( this.base.errcode(res), ERROR.no_categories, "cloud functions: nocategories" );
+      // console.log( body );
+      let res = JSON.parse(body);
+      this.expect(this.base.errcode(res), ERROR.no_categories, "cloud functions: no categories");
     });
 
 
@@ -1286,8 +1240,31 @@ class AppTest {
     form['categories'] = ['abc'];
     request.post({ url: url, form: form }, (error, response, body) => {
       // console.log( body );
-      let res = JSON.parse( body );
-      this.test( this.isPushKey(res.data), "cloud functions: forum.createPost: " + res.data );
+      let res = JSON.parse(body);
+      this.test(this.isPushKey(res.data), "cloud functions: forum.createPost: " + res.data);
+      let pushKey = res.data;
+
+      this.forum.getPostData(pushKey)
+        .then((post: POST) => {
+          let formEdit: POST_EDIT = {
+            route: 'forum.editPost',
+            key: pushKey,
+            uid: this.userA.uid,
+            secret: this.userA.secret,
+            subject: 'subject B'
+          };
+          request.post({ url: url, form: formEdit }, (error, response, body) => {
+            // console.log(body);
+            let res = JSON.parse(body);
+            this.expect(this.base.errcode(res), null, "cloud functions: no error on edit.");
+            this.forum.getPostData(pushKey)
+              .then((pe: POST) => {
+                this.expect(pe.subject, formEdit.subject, "Post edited");
+              })
+              .catch(e => this.error(e.message));
+          });
+        })
+        .catch(e => this.error(e.message));
     });
 
 
