@@ -160,9 +160,6 @@ export interface COMMENT {
 export type COMMENTS = Array<COMMENT>;
 
 
-/**
- * Push Message
- */
 
 export interface PUSH_MESSAGE {
     token?: string;
@@ -172,3 +169,4 @@ export interface PUSH_MESSAGE {
     url?: string;
     icon?: string;
 };
+
