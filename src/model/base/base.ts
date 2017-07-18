@@ -4,7 +4,7 @@ import {
     SECRET_KEY_PATH,
     ERROR_INFO,
     PUSH_MESSAGE,
-    USER_PUSH_TOKEN_PATH
+    USER_PUSH_TOKEN_PATH, USER_TOKEN
 } from './../../interface';
 import { ERROR } from './../error/error';
 
@@ -383,6 +383,27 @@ export class Base {
             if (token) return token;
             else return null;
         });
+    }
+
+
+
+
+    /**
+     * 
+     * @param uid User ID
+     * @param tokenToUpdate 
+     */
+    updateToken(uid, tokenToUpdate) {
+
+        let promise;
+        if (uid) promise = this.token(uid).set(tokenToUpdate);
+        else promise = this.anonymousToken(tokenToUpdate).set(true);
+        promise
+            .then(() => {
+                localStorage.setItem(USER_TOKEN, tokenToUpdate);
+            })
+            .catch(e => console.error(e));
+
     }
 
 
