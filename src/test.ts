@@ -1049,15 +1049,13 @@ class AppTest {
     // let paths = pathBA2.split('/');
     
 
-    let uids = await this.forum.getRootUids( pathBA2A );
+    let uids = await this.forum.getParentUids( pathBA2A );
 
 
-    this.test( uids.length == 5, "5 uids" );
+    this.test( uids.length == 3, "3 uids" );
     this.test( uids[0] == '-uid-push-test', 'push test uid ok' );
     this.test( uids[1] == this.userA.uid, 'user a uid');
     this.test( uids[2] == this.userB.uid, 'user b uid');
-    this.test( uids[3] == this.userA.uid, 'user a uid');
-    this.test( uids[4] == this.userA.uid, 'user a uid');
 
 
   }

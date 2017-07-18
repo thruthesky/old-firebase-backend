@@ -514,6 +514,9 @@ export class Forum extends Base {
     /**
      * Returns tokens of UID(s) of post and comments in the tree path.
      * @param path path of a comment
+     * 
+     * @note this method exists on forum.ts because it works with forum but may be transferred to base.ts
+     * 
      */
     async getParentTokens(path: string): Promise<Array<string>> {
         let tokens: Array<string> = [];
@@ -530,11 +533,36 @@ export class Forum extends Base {
                 paths.pop();
             }
         }
-        tokens.push(await this.getPostUid(paths[0]));
+        tokens.push(await this.getPostUidToken(paths[0]));
         tokens = tokens.reverse();
         tokens = Array.from(new Set(tokens));
 
         return tokens;
+    }
+
+    /**
+     * Returns UID(s) of parent comments and post based on the comment path.
+     * @note it removes duplicated UIDs.
+     * @param path Path of a comement
+     */
+    async getParentUids(path: string): Promise<Array<string>> {
+        let uids: Array<string> = [];
+
+        if (!path || typeof path !== 'string') return uids;
+        let paths = path.split('/');
+        if (!paths.length) return uids;
+        if (paths.length > 1) {
+            let len = paths.length;
+            for (let i = 0; i < len - 1; i++) {
+                let newPath = paths.join('/');
+                // console.log("newPath: ", newPath);
+                uids.push(await this.getCommentUid(newPath));
+                paths.pop();
+            }
+        }
+        uids.push(await this.getPostUid(paths[0]));
+        uids = uids.reverse();
+        return Array.from(new Set( uids ));
     }
 
 
