@@ -1,6 +1,11 @@
 import * as firebase from 'firebase';
 
-import { SECRET_KEY_PATH, ERROR_INFO } from './../../interface';
+import {
+    SECRET_KEY_PATH,
+    ERROR_INFO,
+    PUSH_MESSAGE,
+    USER_PUSH_TOKEN_PATH
+} from './../../interface';
 import { ERROR } from './../error/error';
 
 
@@ -332,6 +337,54 @@ export class Base {
                 }
             });
     }
+
+
+
+    ////////////////////////////////////////////////////////////////
+    //
+    // Push Message
+    //
+    ////////////////////////////////////////////////////////////////
+    
+
+
+    /**
+     * Return token refernce.
+     * @param uid User key
+     */
+    token(uid: string): firebase.database.Reference {
+        console.log(this.root);
+        let ref = this.root.child(USER_PUSH_TOKEN_PATH);
+        if (uid) {
+            ref = ref.child('login');
+            ref = ref.child(uid);
+        }
+        else ref = ref.child('anonymous');
+        return ref;
+    }
+
+    anonymousToken(token) {
+        return this.token(null).child(token);
+    }
+
+    /**
+     * Returns a token for login-user's uid.
+     * 
+     * @param uid User id
+     * 
+     * @return
+     *      token of promise of the user.
+     *      null of promise if there is no token by that uid
+     * 
+     */
+    getToken(uid: string): firebase.Promise<string> {
+        return this.token(uid).once('value').then(snap => {
+            let token = snap.val();
+            if (token) return token;
+            else return null;
+        });
+    }
+
 
 
 }

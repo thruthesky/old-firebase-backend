@@ -203,19 +203,17 @@ export class Forum extends Base {
      * @use when you need to check the post data for create/edit.
      * @param post Post data from user
      */
-    checkPost(post:POST): string {
+    checkPost(post: POST): string {
         if (post === void 0) return ERROR.post_data_is_empty;
 
         /// When there is no key, it means, post create, so, categories are needed.
-        if ( post.key === void 0 || ! post.key  ) {
+        if (post.key === void 0 || !post.key) {
             if (this.isEmptyCategory(post)) {
                 return ERROR.no_categories;
             }
-        }
-        /// if key exists,
-        else {
+        } else { /// if key exists,
             // console.log("key: ", post.key);
-            if ( this.checkKey( post.key ) ) return ERROR.malformed_key;
+            if (this.checkKey(post.key)) return ERROR.malformed_key;
         }
         return null;
     }
@@ -306,7 +304,7 @@ export class Forum extends Base {
 
         if (post.uid != old_post.uid) return this.error(ERROR.permission_denied);
 
-        
+
         let ref = this.postData(post.key);
         delete post.secret;
         return this.setPostData(ref, post, old_post);
@@ -494,6 +492,11 @@ export class Forum extends Base {
         });
     }
 
+    async getCommentUidToken(commentPath): Promise<string> {
+        let uid = await this.getCommentUid(commentPath);
+        return this.getToken(uid);
+    }
+
     async getPostUid(postKey): Promise<string> {
         if (this.isEmpty(postKey)) return this.error(ERROR.empty_key_on_get_post_uid);
         return this.postData(postKey).child('uid').once('value').then(snap => {
@@ -502,28 +505,36 @@ export class Forum extends Base {
         });
     }
 
+    async getPostUidToken(postKey): Promise<string> {
+        let uid = await this.getPostUid(postKey);
+        return this.getToken(uid);
+    }
+
+
     /**
-     * Returns UID(s) of post and comments in the tree path.
+     * Returns tokens of UID(s) of post and comments in the tree path.
      * @param path path of a comment
      */
-    async getRootUids(path:string): Promise<Array<string>>  {
-        let uids: Array<string> = [];
+    async getParentTokens(path: string): Promise<Array<string>> {
+        let tokens: Array<string> = [];
 
-        if ( !path || typeof path !== 'string' ) return uids;
+        if (!path || typeof path !== 'string') return tokens;
         let paths = path.split('/');
-        if ( ! paths.length ) return uids;
-        if ( paths.length > 1 ) {
+        if (!paths.length) return tokens;
+        if (paths.length > 1) {
             let len = paths.length;
-            for( let i = 0; i < len - 1; i ++ ) {
+            for (let i = 0; i < len - 1; i++) {
                 let newPath = paths.join('/');
                 // console.log("newPath: ", newPath);
-                uids.push( await this.getCommentUid( newPath ) );
+                tokens.push(await this.getCommentUidToken(newPath));
                 paths.pop();
             }
         }
+        tokens.push(await this.getPostUid(paths[0]));
+        tokens = tokens.reverse();
+        tokens = Array.from(new Set(tokens));
 
-        uids.push( await this.getPostUid( paths[0] ) );
-        return uids.reverse();
+        return tokens;
     }
 
 
@@ -651,7 +662,7 @@ export class Forum extends Base {
      * @endcode
      */
     async categoriesExist(categories: Array<string>) {
-        if ( !categories || !categories.length || categories.length == 0 ) return true;
+        if (!categories || !categories.length || categories.length == 0) return true;
         for (let category of categories) {
             await this.categoryExists(category);
         }
