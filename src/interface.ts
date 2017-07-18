@@ -36,6 +36,11 @@ export interface ERROR_INFO {
 
 
 
+
+export const USER_TOKEN = 'user-token';
+
+
+
 /**
  * User
  */
