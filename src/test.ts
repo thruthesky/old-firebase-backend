@@ -63,6 +63,14 @@ class AppTest {
   };
 
   
+  
+  userC = {
+    uid: '-push-key-for-user-c',
+    name: 'UserC',
+    secret: ''
+  };
+
+  
 
   constructor() {
     this.root = db.ref();
@@ -97,14 +105,25 @@ class AppTest {
       await this.testBackendApi();
       await this.testBackendPost();
       await this.testCreateCommentsWithModel();
-      this.testCloudFunctionsPost();
       await this.testCommentSimple();
       await this.testComment();
       await this.testCommentsTreeToArray();
+
+
+      await this.test_getParentUids();
+      await this.test_getParentTokens();
       await this.testFriendlyUrl();
       await this.testSeo();
-      await this.testAdv();
+
+
+      /// cloud test things should be in the middle since they are using callbacks.
+      /// it uses set timeout to wait to finish.
+      this.testCloudFunctionsPost(); ///
       this.testCloudFunctions(); /// it is not promise
+
+
+
+      await this.testAdv();
     }
 
     setTimeout(() => {
@@ -183,10 +202,7 @@ class AppTest {
    * 
    */
   async prepareTest() {
-    console.log("\n =========================== prepareTest() =========================== ")
-
-
-
+    console.log("\n =========================== prepareTest() =========================== ");
 
 
     console.log(`prepareTest() ==> generateSecretKey of ${this.userA.uid}`);
@@ -198,7 +214,7 @@ class AppTest {
       .catch(e => {
         console.log("ERROR", e);
         this.error(`generateSecretKey failed`);
-      })
+      });
 
 
       await this.forum.generateSecretKey(this.userB.uid)
@@ -209,7 +225,17 @@ class AppTest {
       .catch(e => {
         console.log("ERROR", e);
         this.error(`generateSecretKey failed`);
+      });
+
+      await this.forum.generateSecretKey(this.userC.uid)
+      .then(secret => {
+        this.userC.secret = secret;
+        this.success(`key: ${secret} generated for ${this.userC.name}`);
       })
+      .catch(e => {
+        console.log("ERROR", e);
+        this.error(`generateSecretKey failed`);
+      });
 
 
   }
@@ -1029,7 +1055,7 @@ class AppTest {
 
   }
 
-  async testPush() {
+  async test_getParentUids() {
 
     let begin: POST = await this.testCreateAPost('abc', 'push test', '-uid-push-test');
     let p = begin.key;
@@ -1038,13 +1064,12 @@ class AppTest {
     let pathB = await this.createAComment(p, 'B');
     let pathC = await this.createAComment(p, 'C');
 
-
     let pathBA = await this.createAComment(pathB, 'BA', this.userB.uid, this.userB.secret);
     let pathBA1 = await this.createAComment(pathBA, 'BA1');
     let pathBA2: string = await this.createAComment(pathBA, 'BA2');
     let pathBA2A: string = await this.createAComment(pathBA2, 'BA2A');
 
-    console.log("pathBA2A: ", pathBA2A);
+    // console.log("pathBA2A: ", pathBA2A);
 
     // let paths = pathBA2.split('/');
     
@@ -1059,6 +1084,33 @@ class AppTest {
 
 
   }
+
+  async test_getParentTokens() {
+
+    await this.forum.updateToken( this.userA.uid, 'tokenA' );
+
+    let begin: POST = await this.testCreateAPost('abc', 'push test', this.userA.uid );
+    let p = begin.key;
+
+    let pathA = await this.createAComment(p, 'A');
+    let pathAA = await this.createAComment(pathA, 'AA', this.userB.uid, this.userB.secret);
+    let pathAAA = await this.createAComment(pathAA, 'AAA', this.userC.uid, this.userC.secret);
+    let pathAAAA = await this.createAComment(pathAAA, 'AAAA', this.userA.uid, this.userA.secret);
+
+    let tokens = await this.forum.getParentTokens( pathAAAA );
+
+    console.log(tokens);
+  }
+
+
+
+
+
+
+
+
+
+
   async testCommentsTreeToArray() {
 
     let begin: POST = await this.testCreateAPost('abc', 'Begin');
@@ -1092,6 +1144,7 @@ class AppTest {
 
     let pathE = await this.createAComment(p, 'E');
     let pathF = await this.createAComment(p, 'F');
+    
     let pathG = await this.createAComment(p, 'G');
     let pathH = await this.createAComment(p, 'H');
     let pathI = await this.createAComment(p, 'I');

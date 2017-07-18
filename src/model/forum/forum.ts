@@ -517,6 +517,8 @@ export class Forum extends Base {
      * 
      * @note this method exists on forum.ts because it works with forum but may be transferred to base.ts
      * 
+     * @return an array of user push tokens.
+     *      emtpy array if no push tokens exists.
      */
     async getParentTokens(path: string): Promise<Array<string>> {
         let tokens: Array<string> = [];
@@ -528,14 +530,19 @@ export class Forum extends Base {
             let len = paths.length;
             for (let i = 0; i < len - 1; i++) {
                 let newPath = paths.join('/');
+                let token = await this.getCommentUidToken(newPath);
                 // console.log("newPath: ", newPath);
-                tokens.push(await this.getCommentUidToken(newPath));
+                // console.log(token);
+                if (token) tokens.push(token);
                 paths.pop();
             }
         }
-        tokens.push(await this.getPostUidToken(paths[0]));
-        tokens = tokens.reverse();
-        tokens = Array.from(new Set(tokens));
+        let token = await this.getPostUidToken(paths[0]);
+        if (token) tokens.push(token);
+        if (tokens.length) {
+            tokens = tokens.reverse();
+            tokens = Array.from(new Set(tokens));
+        }
 
         return tokens;
     }
@@ -562,7 +569,7 @@ export class Forum extends Base {
         }
         uids.push(await this.getPostUid(paths[0]));
         uids = uids.reverse();
-        return Array.from(new Set( uids ));
+        return Array.from(new Set(uids));
     }
 
 

@@ -353,7 +353,7 @@ export class Base {
      * @param uid User key
      */
     token(uid: string): firebase.database.Reference {
-        console.log(this.root);
+        // console.log(this.root);
         let ref = this.root.child(USER_PUSH_TOKEN_PATH);
         if (uid) {
             ref = ref.child('login');
@@ -398,11 +398,7 @@ export class Base {
         let promise;
         if (uid) promise = this.token(uid).set(tokenToUpdate);
         else promise = this.anonymousToken(tokenToUpdate).set(true);
-        promise
-            .then(() => {
-                localStorage.setItem(USER_TOKEN, tokenToUpdate);
-            })
-            .catch(e => console.error(e));
+        return promise;
 
     }
 
