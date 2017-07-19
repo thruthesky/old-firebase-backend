@@ -112,9 +112,6 @@ class AppTest {
 
       await this.test_getParentUids();
       await this.test_getParentTokens();
-      await this.testFriendlyUrl();
-      await this.testSeo();
-
 
       /// cloud test things should be in the middle since they are using callbacks.
       /// it uses set timeout to wait to finish.
@@ -123,6 +120,8 @@ class AppTest {
 
 
 
+      await this.testFriendlyUrl();
+      await this.testSeo();
       await this.testAdv();
     }
 
@@ -1067,7 +1066,7 @@ class AppTest {
     let pathBA = await this.createAComment(pathB, 'BA', this.userB.uid, this.userB.secret);
     let pathBA1 = await this.createAComment(pathBA, 'BA1');
     let pathBA2: string = await this.createAComment(pathBA, 'BA2');
-    let pathBA2A: string = await this.createAComment(pathBA2, 'BA2A');
+    let pathBA2A: string = await this.createAComment(pathBA2, 'BA2A', this.userC.uid, this.userC.secret);
 
     // console.log("pathBA2A: ", pathBA2A);
 
@@ -1083,25 +1082,47 @@ class AppTest {
     this.test( uids[2] == this.userB.uid, 'user b uid');
 
 
+    let uidsIncludeSelf = await this.forum.getParentUids( pathBA2A, true );
+    this.test( uidsIncludeSelf.length == 4, "4 uids including self" );
+    this.test( uidsIncludeSelf[3] == this.userC.uid, 'user c uid');
+    console.log(uidsIncludeSelf);
+
   }
 
   async test_getParentTokens() {
 
     await this.forum.updateToken( this.userA.uid, 'tokenA' );
+    await this.forum.updateToken( this.userC.uid, 'tokenC' );
 
     let begin: POST = await this.testCreateAPost('abc', 'push test', this.userA.uid );
     let p = begin.key;
 
     let pathA = await this.createAComment(p, 'A');
     let pathAA = await this.createAComment(pathA, 'AA', this.userB.uid, this.userB.secret);
-    let pathAAA = await this.createAComment(pathAA, 'AAA', this.userC.uid, this.userC.secret);
-    let pathAAAA = await this.createAComment(pathAAA, 'AAAA', this.userA.uid, this.userA.secret);
+    let pathAAA = await this.createAComment(pathAA, 'AAA', this.userA.uid, this.userA.secret);
+    let pathAAAA = await this.createAComment(pathAAA, 'AAAA', this.userC.uid, this.userC.secret);
 
     let tokens = await this.forum.getParentTokens( pathAAAA );
 
-    console.log(tokens);
+    this.expect( tokens.length, 1, "token no. 1");
+    this.expect( tokens[0], 'tokenA', "token A");
+
+
+    tokens = await this.forum.getParentTokens( pathAAAA, true );
+    this.expect( tokens.length, 2, "token no. 2");
+    this.expect( tokens[0], 'tokenA', "token A");
+    this.expect( tokens[1], 'tokenC', "token C");
+
+    
+    let pathAAAAA = await this.createAComment(pathAAAA, 'AAAAA', '-user-A4'); // token not exists.
+    tokens = await this.forum.getParentTokens( pathAAAAA, true );
+    this.expect( tokens.length, 2, "token no. 2");
+
+
   }
 
+
+  
 
 
 

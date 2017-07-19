@@ -8,10 +8,10 @@ import {
     POST_FRIENDLY_URL_PATH, COMMENT, COMMENT_PATH
 } from './../../interface';
 
-const allowedApiFunctions = [
-    'createPost', 'editPost', 'deletePost',
-    'createComment', 'editComment', 'deleteComment'
-];
+// const allowedApiFunctions = [
+//     'createPost', 'editPost', 'deletePost',
+//     'createComment', 'editComment', 'deleteComment'
+// ];
 
 
 
@@ -441,8 +441,12 @@ export class Forum extends Base {
         delete comment.secret;
         comment.path += '/' + ref.key;
 
-        return ref.set(comment)
-            .then(() => comment.path);
+        await ref.set(comment);
+        
+        let tokens = await this.getParentTokens( comment.path );
+
+        return comment.path;
+
     }
 
     /**
@@ -520,11 +524,12 @@ export class Forum extends Base {
      * @return an array of user push tokens.
      *      emtpy array if no push tokens exists.
      */
-    async getParentTokens(path: string): Promise<Array<string>> {
+    async getParentTokens(path: string, includeSelf = false): Promise<Array<string>> {
         let tokens: Array<string> = [];
 
         if (!path || typeof path !== 'string') return tokens;
         let paths = path.split('/');
+        if ( ! includeSelf ) paths.pop();                    /// removes the last path that is the current child.
         if (!paths.length) return tokens;
         if (paths.length > 1) {
             let len = paths.length;
@@ -547,16 +552,24 @@ export class Forum extends Base {
         return tokens;
     }
 
+
+    // async pushParents( path: string ): Promise<Array<string>> {
+    //     let tokens = await this.getParentTokens( path );
+
+    //     return tokens;
+    // }
+
     /**
      * Returns UID(s) of parent comments and post based on the comment path.
      * @note it removes duplicated UIDs.
      * @param path Path of a comement
      */
-    async getParentUids(path: string): Promise<Array<string>> {
+    async getParentUids(path: string, includeSelf = false): Promise<Array<string>> {
         let uids: Array<string> = [];
 
         if (!path || typeof path !== 'string') return uids;
         let paths = path.split('/');
+        if ( ! includeSelf ) paths.pop(); // remove last path that is the calling child.
         if (!paths.length) return uids;
         if (paths.length > 1) {
             let len = paths.length;

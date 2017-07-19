@@ -27,7 +27,6 @@ export class BackendApi extends Base {
         // console.log(res);
 
 
-
         let base = new Base();
         let f = base.checkRequest(this.req);
         if (f.error) {
